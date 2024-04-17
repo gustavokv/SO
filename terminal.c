@@ -1,0 +1,163 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <string.h>
+#include <stdlib.h>
+#include <dirent.h>
+
+#define MAX_ARGS 1045
+#define MAX_ARG_SIZE 40
+#define MAXBUF (BUFSIZ*2)
+#define _GNU_SOURCE
+
+struct TreeNode {
+	char name[128];
+	pid_t pid;
+	pid_t ppid;
+	struct TreeNode *parent;
+	struct TreeNode *children[128];
+	struct TreeNode *next;
+};
+
+static struct TreeNode *head;
+
+//Insere um novo nó para a árvore de processos.
+void insertNode(char *proc_name, pid_t pid, pid_t ppid){
+    struct TreeNode *node;
+
+    node = (struct TreeNode*)malloc(sizeof(struct TreeNode));
+    if(!node){
+        printf("Erro em alocar memoria para o no.\n");
+        return;
+    }
+
+    strcpy(node->name, proc_name);
+    node->pid = pid;
+    node->ppid = ppid;
+    node->children[0] = NULL;
+    node->parent = NULL;
+    node->next = head;
+}
+
+pid_t checkPPid(char *dir){
+    char buf[MAXBUF];
+    FILE *p_file = fopen(dir, "r");
+    pid_t ppid;
+
+    size_t ret = fread(buf, sizeof(char), MAXBUF-1, p_file);
+    buf[ret++] = '\0';
+
+    fclose(p_file);
+
+    char *ppid_loc = strstr(buf, "\nTgid:");
+    if(ppid_loc){
+        ppid = sscanf(ppid_loc, "\nTgid:%d", &ppid);
+        if(!ppid || ppid == EOF)
+            perror("scanf:");
+    }         
+
+    return ppid;
+}
+
+//Comando tree PID
+void treeProcess(char *parent_PID){
+    DIR *dir;
+    struct dirent *entry;
+    char pid_dir[MAX_ARG_SIZE];
+    pid_t pid = atoi(parent_PID), child;
+    
+    strcpy(pid_dir, "/proc/");
+    strcat(pid_dir, parent_PID);
+    
+    dir = opendir(pid_dir);
+
+    if(!dir){
+        printf("Erro ao encontrar o PID!\n");
+        closedir(dir);
+        return;
+    }
+
+    dir = opendir("/proc");
+
+    while(entry = readdir(dir)){
+        if(atoi(entry->d_name) > pid){
+            strcpy(pid_dir, "/proc/");
+            strcat(pid_dir, entry->d_name);
+            strcat(pid_dir, "/stat");
+    
+            child = checkPPid(pid_dir);
+
+            printf("PPid = %d\n", child);
+        }
+
+    }
+
+    closedir(dir);
+}   
+
+int main(){
+    char command[MAX_ARGS];
+
+    while(printf("user@linux ~$ ") && fgets(command, sizeof(command), stdin)){
+        command[strlen(command)-1] = '\0';
+
+        //Caso aperte somente enter ele continua no terminal
+        if(strcmp(command, "\0")==0)
+            continue;
+
+        unsigned short waitProcess=0;
+
+        if(command[strlen(command)-1] == '&'){
+            waitProcess++;
+            command[strlen(command)-1] = '\0';
+        }
+
+        unsigned nArgs=0;
+        int status;
+        char *token = strtok(command, " ");
+        char *args[MAX_ARG_SIZE] = {(char *)0};
+        char cmd[MAX_ARG_SIZE];
+        pid_t pid;
+
+        if(strcmp(command, "exit") == 0)
+            return 0;
+
+        strcpy(cmd, "/bin/");
+        strcat(cmd, token);
+
+        //Passa os argumentos para uma matriz por conta do comando execve
+        while(token){
+            args[nArgs] = malloc(sizeof(MAX_ARG_SIZE));
+            strcpy(args[nArgs++], token);
+
+            token = strtok(NULL, " ");
+        }
+
+        if(strcmp(args[0], "cd") == 0) //Comando cd pois o execve não o identifica
+            chdir(args[1]);
+        else if(strcmp(args[0], "tree") == 0)
+            treeProcess(args[1]);
+        else{
+            pid = fork();
+
+            if(pid<0)
+                fprintf(stderr, "Fork Failed.\n");
+            else if(pid == 0){ //Child
+                execve(cmd, args, __environ);
+                exit(1);
+            }
+            else{ //Parent
+                if(!waitProcess) //Para liberar o terminal antes do processo finalizar
+                    waitpid(pid, &status, 0);
+            }
+        }
+
+        //Reseta o array por conta do malloc
+        for(int i=0;i<nArgs;i++)
+            free(args[i]);  
+
+        nArgs=0;
+    }
+
+    return 0;
+}
