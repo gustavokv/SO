@@ -39,34 +39,34 @@ void insertNode(char *proc_name, pid_t pid, pid_t ppid){
     node->next = head;
 }
 
-pid_t checkPPid(char *dir){
-    char buf[MAXBUF];
-    FILE *p_file = fopen(dir, "r");
-    pid_t ppid;
-    unsigned short i=0;
-    char *token;
+// pid_t getPPid(char *dir){
+//     char buf[MAXBUF];
+//     FILE *p_file = fopen(dir, "r");
+//     pid_t ppid;
+//     unsigned short i=0;
+//     char *token;
 
-    size_t ret = fread(buf, sizeof(char), MAXBUF-1, p_file);
-    buf[ret++] = '\0';
+//     size_t ret = fread(buf, sizeof(char), MAXBUF-1, p_file);
+//     buf[ret++] = '\0';
 
-    fclose(p_file);
+//     fclose(p_file);
 
-    token = strtok(buf, " ");
+//     token = strtok(buf, " ");
 
-    printf("%s\n", dir);
-    while(i<4){
-        printf("%s\n", token);
-        token = strtok(NULL, " ");
-        i++;
-    }
-    printf("%s\n", token);
-    ppid = atoi(token);
+//     printf("%s\n", dir);
+//     while(i<4){
+//         printf("%s\n", token);
+//         token = strtok(NULL, " ");
+//         i++;
+//     }
+//     printf("%s\n", token);
+//     ppid = atoi(token);
 
-    if(ppid == 0)
-        exit(0);
+//     if(ppid == 0)
+//         exit(0);
 
-    return ppid;
-}
+//     return ppid;
+// }
 
 //Comando tree PID
 void treeProcess(char *pid_path){
