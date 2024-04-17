@@ -50,49 +50,49 @@ pid_t checkPPid(char *dir){
     fclose(p_file);
 
     char *ppid_loc = strstr(buf, "\nTgid:");
+
     if(ppid_loc){
         ppid = sscanf(ppid_loc, "\nTgid:%d", &ppid);
+
         if(!ppid || ppid == EOF)
             perror("scanf:");
     }         
+
+    printf("%s \n%d\n", dir, ppid);
 
     return ppid;
 }
 
 //Comando tree PID
-void treeProcess(char *parent_PID){
-    DIR *dir;
-    struct dirent *entry;
-    char pid_dir[MAX_ARG_SIZE];
-    pid_t pid = atoi(parent_PID), child;
-    
-    strcpy(pid_dir, "/proc/");
-    strcat(pid_dir, parent_PID);
-    
-    dir = opendir(pid_dir);
+void treeProcess(char *pid_path){
+    char *proc_path;
+    DIR *proc_dir;
+    struct dirent *entity;
+    pid_t pid = atoi(pid_path), ppid;   
 
-    if(!dir){
-        printf("Erro ao encontrar o PID!\n");
-        closedir(dir);
+    //Verificação se o processo existe
+    strcpy(proc_path, "/proc/");
+    strcat(proc_path, pid_path);
+    proc_dir = opendir(proc_path);
+
+    if(!proc_dir){
+        printf("PID nao encontrado!\n");
         return;
     }
 
-    dir = opendir("/proc");
+    strcpy(proc_path, "/proc/");
+    proc_dir = opendir(proc_path);
 
-    while(entry = readdir(dir)){
-        if(atoi(entry->d_name) > pid){
-            strcpy(pid_dir, "/proc/");
-            strcat(pid_dir, entry->d_name);
-            strcat(pid_dir, "/stat");
-    
-            child = checkPPid(pid_dir);
+    while(entity = readdir(proc_dir)){
+        if(atoi(entity->d_name) > pid){
+            strcat(proc_path, "705");
+            strcat(proc_path, "/status");
 
-            printf("PPid = %d\n", child);
+            ppid = checkPPid(proc_path);
         }
-
     }
 
-    closedir(dir);
+    closedir(proc_dir);
 }   
 
 int main(){
