@@ -43,22 +43,27 @@ pid_t checkPPid(char *dir){
     char buf[MAXBUF];
     FILE *p_file = fopen(dir, "r");
     pid_t ppid;
+    unsigned short i=0;
+    char *token;
 
     size_t ret = fread(buf, sizeof(char), MAXBUF-1, p_file);
     buf[ret++] = '\0';
 
     fclose(p_file);
 
-    char *ppid_loc = strstr(buf, "\nTgid:");
+    token = strtok(buf, " ");
 
-    if(ppid_loc){
-        ppid = sscanf(ppid_loc, "\nTgid:%d", &ppid);
+    printf("%s\n", dir);
+    while(i<4){
+        printf("%s\n", token);
+        token = strtok(NULL, " ");
+        i++;
+    }
+    printf("%s\n", token);
+    ppid = atoi(token);
 
-        if(!ppid || ppid == EOF)
-            perror("scanf:");
-    }         
-
-    printf("%s \n%d\n", dir, ppid);
+    if(ppid == 0)
+        exit(0);
 
     return ppid;
 }
@@ -69,6 +74,7 @@ void treeProcess(char *pid_path){
     DIR *proc_dir;
     struct dirent *entity;
     pid_t pid = atoi(pid_path), ppid;   
+    unsigned cont_dir_task=0;
 
     //Verificação se o processo existe
     strcpy(proc_path, "/proc/");
@@ -80,19 +86,40 @@ void treeProcess(char *pid_path){
         return;
     }
 
-    strcpy(proc_path, "/proc/");
+    strcat(proc_path, "/task/");
+
     proc_dir = opendir(proc_path);
 
-    while(entity = readdir(proc_dir)){
-        if(atoi(entity->d_name) > pid){
-            strcat(proc_path, "705");
-            strcat(proc_path, "/status");
+    while(entity = readdir(proc_dir))
+        cont_dir_task++;
 
-            ppid = checkPPid(proc_path);
-        }
+    if(cont_dir_task > 3){ //Caso os nomes dos diretórios sejam os filhos
+        
+    }
+    else{ //Caso esteja no arquivo children
+        strcat(proc_path, pid_path);
+        
+        
+
     }
 
     closedir(proc_dir);
+
+    // strcpy(proc_path, "/proc/");
+    // proc_dir = opendir(proc_path);
+
+    
+    // while(entity = readdir(proc_dir)){
+    //     if(atoi(entity->d_name) > pid){
+    //         strcat(proc_path, entity->d_name);
+    //         strcat(proc_path, "/stat");
+
+    //         ppid = checkPPid(proc_path);
+
+    //         memset(proc_path, '\0', sizeof(proc_path));
+    //         strcpy(proc_path, "/proc/");
+    //     }
+    // }
 }   
 
 int main(){
