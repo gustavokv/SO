@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <dirent.h>
+#include <ctype.h>
 
 #define MAX_ARGS 1045
 #define MAX_ARG_SIZE 40
@@ -20,44 +21,57 @@ struct TreeNode {
 	char name[128];
 	pid_t pid;
 	pid_t ppid;
-	struct TreeNode *parent;
-	struct TreeNode *children[128];
-	struct TreeNode *next;
+	struct TreeNode *parent; //Guarda o pai do processo
+	struct TreeNode *children[128]; //Guarda os filhos do processo
+	struct TreeNode *next; /*Com isso criaremos uma lista encadeada que após todos os processos filhos terem sido adicionados
+                             à lista encadeada, transformaremos em uma árvore n-ária.*/
 };
 
-static struct TreeNode *processTree;
+struct TreeNode *processTree;
 
-//Insere um novo nó para a árvore de processos.
+//Insere um novo nó na lista encadeada dentro da struct da árvore.
 void insertNode(char *proc_name, pid_t pid, pid_t ppid){
-    struct TreeNode *node;
+    struct TreeNode *node, *aux = processTree;
 
     node = (struct TreeNode*)malloc(sizeof(struct TreeNode));
+
     if(!node){
         printf("Erro em alocar memoria para o no.\n");
         return;
     }
 
     strcpy(node->name, proc_name);
+
     node->pid = pid;
     node->ppid = ppid;
-    node->children[0] = NULL;
     node->parent = NULL;
-    node->next = processTree;
-    processTree = node;
+    node->children[0] = NULL;
+    node->next = NULL;
+    
+    if(!processTree){
+        processTree = node;
+        return;
+    }
+
+    while(aux->next)
+        aux = aux->next;
+
+    aux->next = node;
 }
 
+//Retorna o PPID de um processo
 pid_t getPPid(char *dir){
     char buf[MAXBUF];
-    FILE *p_file = fopen(dir, "r");
+    FILE *fp = fopen(dir, "r");
     pid_t ppid;
     unsigned short i=0;
     char *token;
 
     //Abre o stat para pegar o ppid
-    size_t ret = fread(buf, sizeof(char), MAXBUF-1, p_file);
+    size_t ret = fread(buf, sizeof(char), MAXBUF-1, fp);
     buf[ret++] = '\0';
 
-    fclose(p_file);
+    fclose(fp);
 
     //Conta até o quarto token para pegar o quarto argumento (ppid)
     token = strtok(buf, " ");
@@ -70,17 +84,18 @@ pid_t getPPid(char *dir){
     return ppid;
 }
 
+//Retorna o nome de um PID
 char* getProcName(char *dir, char *pid){
     char buf[MAXBUF];
-    FILE *p_file = fopen(dir, "r");
+    FILE *fp = fopen(dir, "r");
     unsigned short i=0;
     char *token;
 
     //Abre o stat para pegar o ppid
-    size_t ret = fread(buf, sizeof(char), MAXBUF-1, p_file);
+    size_t ret = fread(buf, sizeof(char), MAXBUF-1, fp);
     buf[ret++] = '\0';
 
-    fclose(p_file);
+    fclose(fp);
 
     //Conta até o quarto token para pegar o quarto argumento (ppid)
     token = strtok(buf, " ");
@@ -92,7 +107,7 @@ char* getProcName(char *dir, char *pid){
     return token;
 }
 
-//Acha um nó na lista encadeada formada para construir a árvore
+//Acha um nó na lista encadeada para construir a árvore
 struct TreeNode* findNode(pid_t pid){
     struct TreeNode *node;
     
@@ -121,6 +136,7 @@ void treeProcess(char *pid_path){
         return;
     }
 
+    //Insere na lista encadeada o primeiro nó (pai)
     strcat(proc_path, "/stat");
     strcpy(proc_name, getProcName(proc_path, pid_path));
     insertNode(proc_name, pid, 0);
@@ -128,17 +144,18 @@ void treeProcess(char *pid_path){
     strcpy(proc_path, "/proc/");
     proc_dir = opendir(proc_path);
     
+    //Varre toda o diretório de processos
     while(entity = readdir(proc_dir)){
-        if(atoi(entity->d_name) > pid){
+        if(atoi(entity->d_name) > pid){ //Como todo processo filho tem um valor de PID maior que o PPID, ele só entra caso isso ocorrer
             strcat(proc_path, entity->d_name);
             strcat(proc_path, "/stat");
             
             ppid = getPPid(proc_path);
             strcpy(proc_name, getProcName(proc_path, entity->d_name));
 
-            if(ppid == pid && !findNode(ppid)){
+            if(ppid == pid && !findNode(atoi(entity->d_name))){
                 insertNode(proc_name, atoi(entity->d_name), ppid);
-                treeProcess(entity->d_name);
+                treeProcess(entity->d_name); //Depois de inserir um filho, chama novamente o treeProcess para verificar se ele possui filhos
             }
 
             memset(proc_path, '\0', sizeof(proc_path));
@@ -149,53 +166,52 @@ void treeProcess(char *pid_path){
     closedir(proc_dir);
 }   
 
+//Com base na lista encadeada criada constrói a árvore
 void buildTree(){
 	int i;
-	struct TreeNode *node, *pnode;
+	struct TreeNode *node, *parent_node;
 
-	/* now we have a valid linked list, make a tree */
-	for(node = processTree; node != NULL; node = node->next) {
+	for(node = processTree; node != NULL; node = node->next){
 		i = 0;
+		parent_node = findNode(node->ppid); 
 
-		pnode = findNode(node->ppid);
+		if (parent_node != NULL) {
+			node->parent = parent_node;
 
-		if(pnode != NULL) {
-			node->parent = pnode;
+			while (parent_node->children[i++] != NULL);
 
-			while (pnode->children[i++] != NULL);
-
-			pnode->children[i - 1] = node;
-			pnode->children[i] = NULL;
+			parent_node->children[i - 1] = node;
+			parent_node->children[i] = NULL;
 		}
 	}
 }
 
 //Imprime a árvore de processos
-void seeTree(struct TreeNode * root, int level){
+void seeTree(struct TreeNode *tree, int level){
 	int i;
 	struct TreeNode *node;
+    
+    for (i = 0; i < level; i++) 
+        printf("              ");
 
-	for (i = 0; i < level; i++) 
-		printf("  ");
-
-	printf("%s pid: %d, ppid: %d\n", root->name, root->pid, root->ppid);
-
+	printf("%s(%d)\n", tree->name, tree->pid);
+    
 	//Recursão nos filhos
 	int j = 0;
-	while((node = root->children[j++]) != NULL)
+	while((node = tree->children[j++]) != NULL)
 		seeTree(node, level + 1);
 }
 
 //Limpa os ponteiros para a próxima árvore
-void clearTree(){
-
+void clearTree(struct TreeNode *node){
+    
 }
 
 int main(){
     char command[MAX_ARGS];
 
     while(printf("user@linux ~$ ") && fgets(command, sizeof(command), stdin)){
-        command[strlen(command)-1] = '\0';
+        command[strlen(command)-1] = '\0'; //Por conta do '\n' do fgets
 
         //Caso aperte somente enter ele continua no terminal
         if(strcmp(command, "\0")==0)
@@ -234,14 +250,9 @@ int main(){
         else if(strcmp(args[0], "tree") == 0){
             treeProcess(args[1]);
             buildTree();
-
-            struct TreeNode *node;
-            for (node = processTree; node != NULL; node = node->next) {
-                if (node->parent == NULL)
-                    seeTree(node, 0);
-            }
-
-            clearTree();
+            struct TreeNode *auxNode = processTree;
+            seeTree(auxNode, 0);
+            clearTree(processTree);
         }
         else{
             pid = fork();
@@ -258,10 +269,9 @@ int main(){
             }
         }
 
-        //Reseta o array por conta do malloc
+        //Reseta o array
         for(int i=0;i<nArgs;i++)
             free(args[i]);  
-
         nArgs=0;
     }
 
