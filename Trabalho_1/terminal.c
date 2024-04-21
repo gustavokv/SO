@@ -14,16 +14,15 @@
 
 #define MAX_ARGS 1045
 #define MAX_ARG_SIZE 200
-#define MAX_CHILDREN 200
 #define MAXBUF (BUFSIZ*2)
 #define _GNU_SOURCE
 
 struct TreeNode {
     pid_t pid;
 	pid_t ppid;
-	char name[MAX_ARG_SIZE];
+	char name[200];
 	struct TreeNode *parent; //Guarda o pai do processo
-	struct TreeNode *children[MAX_CHILDREN]; //Guarda os filhos do processo
+	struct TreeNode *children[200]; //Guarda os filhos do processo
 	struct TreeNode *next; /*Com esta variável criaremos uma lista encadeada que após todos os processos filhos terem sido adicionados
                              à lista encadeada, transformaremos em uma árvore n-ária.*/
 };
