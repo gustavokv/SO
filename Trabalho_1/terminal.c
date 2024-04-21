@@ -21,7 +21,6 @@ struct TreeNode {
     pid_t pid;
 	pid_t ppid;
 	char name[200];
-	struct TreeNode *parent; //Guarda o pai do processo
 	struct TreeNode *children[200]; //Guarda os filhos do processo
 	struct TreeNode *next; /*Com esta variável criaremos uma lista encadeada que após todos os processos filhos terem sido adicionados
                              à lista encadeada, transformaremos em uma árvore n-ária.*/
@@ -44,7 +43,6 @@ void insertNode(char *proc_name, pid_t pid, pid_t ppid){
 
     node->pid = pid;
     node->ppid = ppid;
-    node->parent = NULL;
     node->children[0] = NULL;
     node->next = NULL;
     
@@ -66,6 +64,9 @@ pid_t getPPid(char *dir){
     pid_t ppid;
     unsigned short i=0;
     char *token;
+
+    if(!fp)
+        return -1;
 
     //Abre o stat para pegar o ppid
     size_t ret = fread(buf, sizeof(char), MAXBUF-1, fp);
@@ -151,13 +152,15 @@ void treeProcess(char *pid_path, unsigned short fatherInsert){
         if(atoi(entity->d_name) > pid){ //Como todo processo filho tem um valor de PID maior que o PPID, ele só entra caso isso ocorrer
             strcat(proc_path, entity->d_name);
             strcat(proc_path, "/stat");
-            
-            ppid = getPPid(proc_path);
-            strcpy(proc_name, getProcName(proc_path, entity->d_name));
     
-            if(ppid == pid && !findNode(atoi(entity->d_name))){
-                insertNode(proc_name, atoi(entity->d_name), ppid);
-                treeProcess(entity->d_name, 1); //Depois de inserir um filho, chama novamente o treeProcess para verificar se ele possui filhos
+            ppid = getPPid(proc_path);
+            if(ppid != -1){ //Há casos em que retornará -1 pois o processo não foi encontrado.
+                strcpy(proc_name, getProcName(proc_path, entity->d_name));
+                
+                if(ppid == pid && !findNode(atoi(entity->d_name))){
+                    insertNode(proc_name, atoi(entity->d_name), ppid);
+                    treeProcess(entity->d_name, 1); //Depois de inserir um filho, chama novamente o treeProcess para verificar se ele possui filhos
+                }
             }
 
             memset(proc_path, '\0', sizeof(proc_path));
@@ -178,8 +181,6 @@ void buildTree(){
 		parent_node = findNode(node->ppid); 
 
 		if (parent_node != NULL) {
-			node->parent = parent_node;
-
 			while (parent_node->children[i++] != NULL);
 
 			parent_node->children[i - 1] = node;
@@ -205,16 +206,16 @@ void seeTree(struct TreeNode *tree, int level){
 }
 
 void clearTree(){
-    struct TreeNode **temp = &processTree;
+    struct TreeNode *temp = processTree;
+    struct TreeNode *aux;
 
-    while(*temp != NULL){
-        struct TreeNode **aux = temp;
-        *temp = (*temp)->next;
-        free(*aux);
+    while(temp != NULL){
+        aux = temp->next;
+        free(temp);
+        temp = aux;
     }
 
-    if(processTree)
-        processTree = NULL;
+    processTree = NULL;
 }
 
 int main(){
@@ -259,7 +260,6 @@ int main(){
             chdir(args[1]);
         else if(strcmp(args[0], "tree") == 0){
             treeProcess(args[1], 0);
-            printf("\n");
             buildTree();
             struct TreeNode *auxNode = processTree;
             seeTree(auxNode, 0);
