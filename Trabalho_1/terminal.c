@@ -13,17 +13,18 @@
 #include <ctype.h>
 
 #define MAX_ARGS 1045
-#define MAX_ARG_SIZE 40
+#define MAX_ARG_SIZE 200
+#define MAX_CHILDREN 200
 #define MAXBUF (BUFSIZ*2)
 #define _GNU_SOURCE
 
 struct TreeNode {
-	char name[128];
-	pid_t pid;
+    pid_t pid;
 	pid_t ppid;
+	char name[MAX_ARG_SIZE];
 	struct TreeNode *parent; //Guarda o pai do processo
-	struct TreeNode *children[128]; //Guarda os filhos do processo
-	struct TreeNode *next; /*Com isso criaremos uma lista encadeada que após todos os processos filhos terem sido adicionados
+	struct TreeNode *children[MAX_CHILDREN]; //Guarda os filhos do processo
+	struct TreeNode *next; /*Com esta variável criaremos uma lista encadeada que após todos os processos filhos terem sido adicionados
                              à lista encadeada, transformaremos em uma árvore n-ária.*/
 };
 
@@ -119,7 +120,7 @@ struct TreeNode* findNode(pid_t pid){
 }
 
 //Comando tree PID
-void treeProcess(char *pid_path){
+void treeProcess(char *pid_path, unsigned short fatherInsert){
     char proc_path[MAX_ARG_SIZE], proc_name[MAX_ARG_SIZE];
     DIR *proc_dir;
     struct dirent *entity;
@@ -137,10 +138,12 @@ void treeProcess(char *pid_path){
     }
 
     //Insere na lista encadeada o primeiro nó (pai)
-    strcat(proc_path, "/stat");
-    strcpy(proc_name, getProcName(proc_path, pid_path));
-    insertNode(proc_name, pid, 0);
-    
+    if(!fatherInsert){
+        strcat(proc_path, "/stat");
+        strcpy(proc_name, getProcName(proc_path, pid_path));
+        insertNode(proc_name, pid, 0);
+    }
+
     strcpy(proc_path, "/proc/");
     proc_dir = opendir(proc_path);
     
@@ -152,10 +155,10 @@ void treeProcess(char *pid_path){
             
             ppid = getPPid(proc_path);
             strcpy(proc_name, getProcName(proc_path, entity->d_name));
-
+    
             if(ppid == pid && !findNode(atoi(entity->d_name))){
                 insertNode(proc_name, atoi(entity->d_name), ppid);
-                treeProcess(entity->d_name); //Depois de inserir um filho, chama novamente o treeProcess para verificar se ele possui filhos
+                treeProcess(entity->d_name, 1); //Depois de inserir um filho, chama novamente o treeProcess para verificar se ele possui filhos
             }
 
             memset(proc_path, '\0', sizeof(proc_path));
@@ -202,9 +205,17 @@ void seeTree(struct TreeNode *tree, int level){
 		seeTree(node, level + 1);
 }
 
-//Limpa os ponteiros para a próxima árvore
-void clearTree(struct TreeNode *node){
-    
+void clearTree(){
+    struct TreeNode **temp = &processTree;
+
+    while(*temp != NULL){
+        struct TreeNode **aux = temp;
+        *temp = (*temp)->next;
+        free(*aux);
+    }
+
+    if(processTree)
+        processTree = NULL;
 }
 
 int main(){
@@ -248,11 +259,12 @@ int main(){
         if(strcmp(args[0], "cd") == 0) //Comando cd pois o execve não o identifica
             chdir(args[1]);
         else if(strcmp(args[0], "tree") == 0){
-            treeProcess(args[1]);
+            treeProcess(args[1], 0);
+            printf("\n");
             buildTree();
             struct TreeNode *auxNode = processTree;
             seeTree(auxNode, 0);
-            clearTree(processTree);
+            clearTree();
         }
         else{
             pid = fork();
@@ -260,7 +272,14 @@ int main(){
             if(pid<0)
                 fprintf(stderr, "Fork Failed.\n");
             else if(pid == 0){ //Child
-                execve(cmd, args, __environ);
+                if(execve(cmd, args, __environ) == -1){
+                    strcpy(cmd, "/snap/bin/");
+                    strcat(cmd, args[0]);
+                }
+
+                if(execve(cmd, args, __environ) == -1)
+                    printf("Comando nao encontrado!\n");
+
                 exit(1);
             }
             else{ //Parent
