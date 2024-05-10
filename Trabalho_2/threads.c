@@ -1,57 +1,53 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+int sum;
+int *integers, numIntegers=0;
+char *archiveName;
 
-int sum; /* esses dados são compartilhados pelo(s) thread(s) */
-void *runner(void *param); /* os threads chamam essa função */
+void *runner(void *param);
+void *readFile();
 
-int main(int argc, char *argv[])
-{
-
-	pthread_attr_t attr; /* conjunto de atributos do thread */
-
-	if (argc != 2) {
-		fprintf(stderr, "usage: a.out <integer value>\n");
+int main(int argc, char *argv[]){
+	if (argc != 3) {
+		fprintf(stderr, "usage: ./a.out <archive name> <n threads/processes>\n");
 		return -1;
 	}
 	
 	if (atoi(argv[1]) < 0) {
-		fprintf(stderr, "%d must be >= 0\n", atoi(argv[1]));
+		fprintf(stderr, "%d must be >= 0\n", atoi(argv[2]));
 		return -1;
 	}
 
-    int n = atoi(argv[1]);
+	archiveName = malloc(sizeof(argv[1]));
+	strcpy(archiveName, argv[1]);
 
-    pthread_t tid[n]; /* o identificador do thread */
+	int nThreads = atoi(argv[2]);
+	pthread_t tid[nThreads];
 
-
-    int indices[n]; //vetor
-
-    for (int i = 1; i <= n; i++) {
-        indices[i] = i;
-    }
-
-    /* obtém os atributos default */
-	pthread_attr_init(&attr);
-
+	pthread_create(&tid[0], NULL, readFile, NULL);
+	pthread_join(tid[0], NULL);
 
 	/* cria o thread */
-    for (int i = 1; i <= n; i++) {
-        pthread_create(&tid[n], &attr, runner, &indices[i]);
+    for (int i = 1; i <= nThreads; i++) {
+    	pthread_create(&tid[nThreads], NULL, &runner, &indices[i]);
     }
     
-    for (int i = 1; i <= n; i++) {
+    for (int i = 1; i <= nThreads; i++) {
         /* espera o thread ser encerrado */
-	    pthread_join(tid[n], NULL);
+	    pthread_join(tid[nThreads], NULL);
     }
 
-	printf("sum = %d\n", sum);
+
+	free(archiveName);
+	free(integers);
+	return 0;
 }
 
 /* O thread assumirá o controle nessa função */
-void *runner(void *param)
-{
+void *runner(void *param){
 	int i, upper = atoi(param);
 
     int indice = *((int*)param);
@@ -61,6 +57,29 @@ void *runner(void *param)
 	for (i = 1; i <= indice; i++)
 		sum += i;
 
-    printf ("INDICE: %d\n" , indice);
+	pthread_exit(0);
+}
+
+//Thread principal lê o arquivo e guarda no array de inteiros
+void *readFile(){
+	FILE *fp;
+	int i=0, a;
+
+	fp = fopen(archiveName, "rb");
+
+	if(!fp){
+		printf("Archive <%s> wasn't found.\n", archiveName);
+		exit(0);
+	}
+
+	//Calcula a quantidade de inteiros do arquivo
+	fseek(fp, 0, SEEK_END);
+	numIntegers = ftell(fp) / sizeof(int);
+	rewind(fp);
+	
+	integers = malloc(numIntegers * sizeof(int));
+	while(fread(&integers[i++], sizeof(int), 1, fp));
+
+	fclose(fp);
 	pthread_exit(0);
 }
