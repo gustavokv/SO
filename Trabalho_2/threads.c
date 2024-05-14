@@ -12,12 +12,12 @@ void *readFile();
 
 int main(int argc, char *argv[]){
 	if (argc != 3) {
-		fprintf(stderr, "usage: ./a.out <archive name> <n threads/processes>\n");
+		fprintf(stderr, "usage: ./a.out <archive name> <n threads>\n");
 		return -1;
 	}
 	
-	if (atoi(argv[1]) < 0) {
-		fprintf(stderr, "%d must be >= 0\n", atoi(argv[2]));
+	if (atoi(argv[2]) < 0) {
+		fprintf(stderr, "Number of threads must be > 0.\n");
 		return -1;
 	}
 
@@ -27,19 +27,17 @@ int main(int argc, char *argv[]){
 	int nThreads = atoi(argv[2]);
 	pthread_t tid[nThreads];
 
+	/* Cria thread principal */
 	pthread_create(&tid[0], NULL, readFile, NULL);
 	pthread_join(tid[0], NULL);
 
-	/* cria o thread */
-    for (int i = 1; i <= nThreads; i++) {
+	/* Cria o thread */
+    for (int i = 1; i <= nThreads; i++)
     	pthread_create(&tid[nThreads], NULL, &runner, &indices[i]);
-    }
     
-    for (int i = 1; i <= nThreads; i++) {
-        /* espera o thread ser encerrado */
+	/* Espera o thread ser encerrado */
+    for (int i = 1; i <= nThreads; i++)
 	    pthread_join(tid[nThreads], NULL);
-    }
-
 
 	free(archiveName);
 	free(integers);
@@ -60,7 +58,7 @@ void *runner(void *param){
 	pthread_exit(0);
 }
 
-//Thread principal lê o arquivo e guarda no array de inteiros
+/* Thread principal lê o arquivo e guarda no array de inteiros */
 void *readFile(){
 	FILE *fp;
 	int i=0, a;
@@ -72,13 +70,13 @@ void *readFile(){
 		exit(0);
 	}
 
-	//Calcula a quantidade de inteiros do arquivo
+	/* Calcula a quantidade de inteiros do array no arquivo */
 	fseek(fp, 0, SEEK_END);
 	numIntegers = ftell(fp) / sizeof(int);
 	rewind(fp);
 	
 	integers = malloc(numIntegers * sizeof(int));
-	while(fread(&integers[i++], sizeof(int), 1, fp));
+	while(fread(&integers[i++], sizeof(int), 1, fp)); /* Armazena no array integers os inteiros do arquivo */
 
 	fclose(fp);
 	pthread_exit(0);
