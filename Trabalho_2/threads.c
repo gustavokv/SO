@@ -2,42 +2,66 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
-int sum;
+long int sum;
 int *integers, numIntegers=0;
-char *archiveName;
 
 void *runner(void *param);
-void *readFile();
+void readFile(char*);
+
+typedef struct{
+	int start, end;
+}ThreadsSubArrays;
 
 int main(int argc, char *argv[]){
 	if (argc != 3) {
 		fprintf(stderr, "usage: ./a.out <archive name> <n threads>\n");
 		return -1;
 	}
-	
+
 	if (atoi(argv[2]) < 0) {
-		fprintf(stderr, "Number of threads must be > 0.\n");
+		fprintf(stderr, "Number of threads must be >= 0.\n");
 		return -1;
 	}
 
+	char *archiveName;
 	archiveName = malloc(sizeof(argv[1]));
 	strcpy(archiveName, argv[1]);
 
 	int nThreads = atoi(argv[2]);
 	pthread_t tid[nThreads];
+	ThreadsSubArrays subArraysIndices[nThreads];
 
-	/* Cria thread principal */
-	pthread_create(&tid[0], NULL, readFile, NULL);
-	pthread_join(tid[0], NULL);
+	readFile(archiveName);
 
-	/* Cria o thread */
-    for (int i = 1; i <= nThreads; i++)
-    	pthread_create(&tid[nThreads], NULL, &runner, &indices[i]);
+	if(nThreads == 0){
+		for(int i=0;i<numIntegers;i++)
+			sum += integers[i];
+
+		printf("Sum = %ld.\n", sum);
+
+		free(archiveName);
+		free(integers);
+		return 0;
+	}
+
+	int quantPerSubArray = ceil(numIntegers / nThreads);
+
+	subArraysIndices[0].start = 0;
+	subArraysIndices[0].end = quantPerSubArray-1;
+	for(int i=1;i<nThreads;i++){
+		subArraysIndices[i].start = subArraysIndices[i-1].start+1;
+		subArraysIndices[i].end = subArraysIndices[i].start * quantPerSubArray;
+	}
+
+	// /* Cria as threads */
+    // for (int i = 0; i < nThreads; i++)
+    // 	pthread_create(&tid[nThreads], NULL, &runner, &integers[i]);
     
-	/* Espera o thread ser encerrado */
-    for (int i = 1; i <= nThreads; i++)
-	    pthread_join(tid[nThreads], NULL);
+	// /* Espera o thread ser encerrado */
+    // for (int i = 0; i < nThreads; i++)
+	//     pthread_join(tid[nThreads], NULL);
 
 	free(archiveName);
 	free(integers);
@@ -47,7 +71,6 @@ int main(int argc, char *argv[]){
 /* O thread assumirá o controle nessa função */
 void *runner(void *param){
 	int i, upper = atoi(param);
-
     int indice = *((int*)param);
 	
 	sum = 0;
@@ -58,8 +81,8 @@ void *runner(void *param){
 	pthread_exit(0);
 }
 
-/* Thread principal lê o arquivo e guarda no array de inteiros */
-void *readFile(){
+/* Lê o arquivo e guarda no array de inteiros */
+void readFile(char *archiveName){
 	FILE *fp;
 	int i=0, a;
 
@@ -77,7 +100,6 @@ void *readFile(){
 	
 	integers = malloc(numIntegers * sizeof(int));
 	while(fread(&integers[i++], sizeof(int), 1, fp)); /* Armazena no array integers os inteiros do arquivo */
-
+	
 	fclose(fp);
-	pthread_exit(0);
 }
