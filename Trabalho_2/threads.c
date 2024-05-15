@@ -4,8 +4,8 @@
 #include <string.h>
 #include <math.h>
 
-long int sum=0, *arraySums;
-int *integers, numIntegers=0, indexSum=0;
+int *arraySums, sum=0; 
+int numIntegers=0, indexSum=0, *integers;
 
 void *runner(void *param);
 void readFile(char*);
@@ -33,7 +33,7 @@ int main(int argc, char *argv[]){
 	int nThreads = atoi(argv[2]);
 	pthread_t tid[nThreads];
 	ThreadsSubArrays subArraysIndices[nThreads];
-	arraySums = malloc (sizeof(int) * nThreads);
+	arraySums = malloc(sizeof(int) * nThreads);
 
 	for(int i=0;i<nThreads;i++)
 		arraySums[i] = 0;
@@ -44,7 +44,7 @@ int main(int argc, char *argv[]){
 		for(int i=0;i<numIntegers;i++)
 			sum += integers[i];
 
-		printf("Sum = %ld.\n", sum);
+		printf("Sum = %d\n", sum);
 
 		free(archiveName);
 		free(integers);
@@ -68,21 +68,24 @@ int main(int argc, char *argv[]){
 	if(subArraysIndices[nThreads-1].end < numIntegers)
 		subArraysIndices[nThreads-1].end = numIntegers-1;
 
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+
 	/* Cria as threads */
     for (int i = 0; i < nThreads; i++){
-		indexSum = i;
-    	pthread_create(&tid[i], NULL, runner, &subArraysIndices[i]);
+    	pthread_create(&tid[i], &attr, runner, &subArraysIndices[i]);
 	}
     
 	/* Espera o thread ser encerrado */
-    for (int i = 0; i < nThreads; i++)
+    for (int i = 0; i < nThreads; i++){
 	    pthread_join(tid[i], NULL);
+	}
 
 	/* Soma os resultados dos subarrays */
 	for(int i=0;i<nThreads;i++)
 		sum += arraySums[i];
 
-	printf("Sum = %ld\n", sum);
+	printf("Sum = %d\n", sum);
 
 	free(archiveName);
 	free(integers);
@@ -93,9 +96,11 @@ int main(int argc, char *argv[]){
 /* As threads assumirão o controle nessa função */
 void *runner(void *param){
 	ThreadsSubArrays *threads = (ThreadsSubArrays*)param;
-	
-	for (int i = threads->start; i < threads->end; i++)
+
+	for (int i = threads->start; i <= threads->end; i++){
 		arraySums[indexSum] += integers[i];
+	}
+	indexSum++;
 
 	pthread_exit(0);
 }
@@ -119,6 +124,6 @@ void readFile(char *archiveName){
 	
 	integers = malloc(numIntegers * sizeof(int));
 	while(fread(&integers[i++], sizeof(int), 1, fp)); /* Armazena no array integers os inteiros do arquivo */
-	
+
 	fclose(fp);
 }
