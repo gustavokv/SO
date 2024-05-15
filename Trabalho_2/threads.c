@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 int *arraySums, sum=0; 
 int numIntegers=0, indexSum=0, *integers;
@@ -10,9 +9,9 @@ int numIntegers=0, indexSum=0, *integers;
 void *runner(void *param);
 void readFile(char*);
 
-/* Guarda, para cada thread, o inicio e o fim do array integers para somar */
+/* Guarda, para cada thread, o inicio e o fim dos subarrays do integers para somar */
 typedef struct{
-	int start, end;
+	int start, end, *tempSum;
 }ThreadsSubArrays;
 
 int main(int argc, char *argv[]){
@@ -26,10 +25,12 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
+	/* Salva o nome do arquivo */
 	char *archiveName;
 	archiveName = malloc(sizeof(argv[1]));
 	strcpy(archiveName, argv[1]);
 
+	/* Cria as threads, os índices de cada subArray e o array para guardar a soma dos subArrays*/
 	int nThreads = atoi(argv[2]);
 	pthread_t tid[nThreads];
 	ThreadsSubArrays subArraysIndices[nThreads];
@@ -40,6 +41,7 @@ int main(int argc, char *argv[]){
 
 	readFile(archiveName);
 
+	/* Aceita caso o número de threads seja 0, onde a thread principal faz a soma*/
 	if(nThreads == 0){
 		for(int i=0;i<numIntegers;i++)
 			sum += integers[i];
@@ -52,6 +54,7 @@ int main(int argc, char *argv[]){
 		return 0;
 	}
 
+	/* Passo para cada subArray */
 	int quantPerSubArray = (int)(numIntegers / nThreads);
 	
 	/* Calcula as posições dos subarrays para as threads somá-las */
@@ -73,17 +76,15 @@ int main(int argc, char *argv[]){
 
 	/* Cria as threads */
     for (int i = 0; i < nThreads; i++){
+		subArraysIndices[i].tempSum = &arraySums[i]; 
     	pthread_create(&tid[i], &attr, runner, &subArraysIndices[i]);
 	}
     
 	/* Espera o thread ser encerrado */
     for (int i = 0; i < nThreads; i++){
 	    pthread_join(tid[i], NULL);
-	}
-
-	/* Soma os resultados dos subarrays */
-	for(int i=0;i<nThreads;i++)
 		sum += arraySums[i];
+	}
 
 	printf("Sum = %d\n", sum);
 
@@ -96,11 +97,13 @@ int main(int argc, char *argv[]){
 /* As threads assumirão o controle nessa função */
 void *runner(void *param){
 	ThreadsSubArrays *threads = (ThreadsSubArrays*)param;
+	int tempSum=0;
 
 	for (int i = threads->start; i <= threads->end; i++){
-		arraySums[indexSum] += integers[i];
+		tempSum += integers[i];
 	}
-	indexSum++;
+
+	*(threads)->tempSum = tempSum;
 
 	pthread_exit(0);
 }
