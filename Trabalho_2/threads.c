@@ -54,6 +54,9 @@ int main(int argc, char *argv[]){
 		return 0;
 	}
 
+	if(nThreads > numIntegers)
+		nThreads = numIntegers;
+
 	/* Passo para cada subArray */
 	int quantPerSubArray = (int)(numIntegers / nThreads);
 	
