@@ -11,5 +11,6 @@ Considere o problema de somar números inteiros armazenados em um arquivo binár
 Toda a comunicação entre threads/processos deve ocorrer via memória compartilhada. Em ambos os casos o programa receberá como 
 primeiro argumento o nome do arquivo a ser lido e como segundo argumento a quantidade de threads/processos a serem criados. 
 A quantidade de números inteiros armazenada no arquivo deve ser calculada considerando o tamanho do arquivo em bytes
-e a quantidade de bytes necessária para armazenar um número inteiro. Seguem exemplos para teste dos programas. O arquivo "15" 
-armazena 15 números cuja soma é 120. O arquivo "8388607" armazena essa quantidade de elementos e a soma (com overflow) é -4194304.
+e a quantidade de bytes necessária para armazenar um número inteiro. 
+
+Seguem exemplos para teste dos programas. O arquivo "15" armazena 15 números cuja soma é 120. O arquivo "8388607" armazena essa quantidade de elementos e a soma (com overflow) é -4194304.
