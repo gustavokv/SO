@@ -1,7 +1,12 @@
+/* Aluno: Gustavo Kermaunar Volobueff rgm47006
+   Disciplina de Sistemas Operacionais
+   Professor Doutor Fábricio Sérgio de Paula */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
+/* Struct que define a lista encadeada de processos */
 typedef struct processQueue{
     unsigned int priority;
     unsigned int submission;
@@ -16,7 +21,7 @@ int main(int argc, char *argv[]){
     unsigned int quantum = atoi(argv[2]);
     unsigned int sequential = 0;
 
-    processQueue queue;
+    processQueue *queue = NULL;
 
     if(argc == 4 && strcpy(argv[3], "-seq") == 0)
         sequential++;
@@ -25,9 +30,12 @@ int main(int argc, char *argv[]){
 
     
 
+    
+
     return 0;
 }
 
+/* Faz a leitura do arquivo em uma lista encadeada de processos */
 void insertFileInQueue(char *archName, processQueue **queue){
     FILE *fp = fopen(archName, "rb");
 
@@ -36,39 +44,54 @@ void insertFileInQueue(char *archName, processQueue **queue){
         exit(-1);
     }
 
-    fseek(fp, 0L, SEEK_END);
+    /* Tamanho do arquivo */
+    fseek(fp, 0L, SEEK_END); 
     unsigned int size = ftell(fp);
     rewind(fp);
     
-    char *contentsArray = malloc(size);
+    char *contentsArray = malloc(size), auxChar;
     int i=0;
 
-    while(fread(&contentsArray[i++], sizeof(char), 1, fp));
+    /* Faz a leitura do arquivo num array para salvar na lista depois */
+    while(fread(&auxChar, sizeof(char), 1, fp)){
+        if(auxChar == '\n'){
+            contentsArray[i++] = ' ';
+            contentsArray[i++] = auxChar;
+            contentsArray[i++] = ' ';
+        }
+        else
+            contentsArray[i++] = auxChar;
+    }
+
+    fclose(fp);
 
     i=0;
     char *token = strtok(contentsArray, " ");
     unsigned int burstCount=0;
 
+    /* Salva na lista os valores, separando prioridade, submissão e picos */
     while(1){
         processQueue *newNode = malloc(sizeof(processQueue));
         newNode->bursts = malloc(sizeof(unsigned int) * 100);
         newNode->next = NULL;
-
+        
         do{
             if(i == 0)
                 newNode->priority = atoi(token);
             else if(i == 1)
                 newNode->submission = atoi(token);
             else{
-                if(strcmp(token, "\n") == 0)
-                    break;
-
                 newNode->bursts[burstCount++] = atoi(token);
+                
+                if(strcmp(token, "\n") == 0){
+                    token = strtok(NULL, " ");
+                    break;
+                }
             }
 
             i++;    
         } while(token = strtok(NULL, " "));
-
+        
         if(!(*queue))
             *queue = newNode;
         else{
@@ -87,7 +110,5 @@ void insertFileInQueue(char *archName, processQueue **queue){
             break;
     }
 
-    fclose(fp);
-
-
+    free(contentsArray);
 }
