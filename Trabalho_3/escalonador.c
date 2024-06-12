@@ -15,6 +15,10 @@ typedef struct processQueue{
 } processQueue;
 
 void insertFileInQueue(char *archName, processQueue **queue);
+void printInformations();
+void FCFSAlgorithm(processQueue *queue);
+
+void clearPointers(processQueue **queue);
 
 int main(int argc, char *argv[]){
     char *archName = argv[1];
@@ -28,9 +32,12 @@ int main(int argc, char *argv[]){
 
     insertFileInQueue(archName, &queue);
 
-    
+    /* Algoritmos fazem os escalonamentos e imprimem os resultados solicitados */
+    FCFSAlgorithm(queue);
 
     
+
+    clearPointers(&queue);
 
     return 0;
 }
@@ -52,7 +59,8 @@ void insertFileInQueue(char *archName, processQueue **queue){
     char *contentsArray = malloc(size), auxChar;
     int i=0;
 
-    /* Faz a leitura do arquivo num array para salvar na lista depois */
+    /* Faz a leitura do arquivo num array para salvar na lista depois, separando o final de cada linha para que
+    a separação dos tokens sejam identificados */
     while(fread(&auxChar, sizeof(char), 1, fp)){
         if(auxChar == '\n'){
             contentsArray[i++] = ' ';
@@ -92,6 +100,7 @@ void insertFileInQueue(char *archName, processQueue **queue){
             i++;    
         } while(token = strtok(NULL, " "));
         
+        /* Salva na lista encadeada o novo nó criado do processo */
         if(!(*queue))
             *queue = newNode;
         else{
@@ -111,4 +120,19 @@ void insertFileInQueue(char *archName, processQueue **queue){
     }
 
     free(contentsArray);
+}
+
+void FCFSAlgorithm(processQueue *queue){
+
+}
+
+void clearPointers(processQueue **queue){
+    processQueue *aux = *queue;
+
+    while((*queue)->next){
+        free((*queue)->bursts);
+        *queue = (*queue)->next;
+        free(aux);
+        aux = *queue;
+    }
 }
