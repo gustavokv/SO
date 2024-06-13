@@ -123,7 +123,7 @@ void insertFileInQueue(char *archName, processQueue **queue){
 }
 
 void FCFSAlgorithm(processQueue *queue){
-
+    
 }
 
 void clearPointers(processQueue **queue){
