@@ -10,7 +10,8 @@
 typedef struct processQueue{
     unsigned int priority;
     unsigned int submission;
-    unsigned int *bursts;
+    unsigned int *cpuBursts;
+    unsigned int *ioBursts;
     struct processQueue *next;
 } processQueue;
 
@@ -31,7 +32,7 @@ int main(int argc, char *argv[]){
         sequential++;
 
     insertFileInQueue(archName, &queue);
-
+   
     /* Algoritmos fazem os escalonamentos e imprimem os resultados solicitados */
     FCFSAlgorithm(queue);
 
@@ -75,12 +76,13 @@ void insertFileInQueue(char *archName, processQueue **queue){
 
     i=0;
     char *token = strtok(contentsArray, " ");
-    unsigned int burstCount=0;
+    unsigned int cpuBurstCount=0, ioBurstCount=0;
 
     /* Salva na lista os valores, separando prioridade, submissão e picos */
     while(1){
         processQueue *newNode = malloc(sizeof(processQueue));
-        newNode->bursts = malloc(sizeof(unsigned int) * 100);
+        newNode->cpuBursts = malloc(sizeof(unsigned int) * 100);
+        newNode->ioBursts = malloc(sizeof(unsigned int) * 100);
         newNode->next = NULL;
         
         do{
@@ -89,9 +91,14 @@ void insertFileInQueue(char *archName, processQueue **queue){
             else if(i == 1)
                 newNode->submission = atoi(token);
             else{
-                newNode->bursts[burstCount++] = atoi(token);
+                if(i % 2 == 0)
+                    newNode->cpuBursts[cpuBurstCount++] = atoi(token);
+                else
+                    newNode->ioBursts[ioBurstCount++] = atoi(token);
                 
                 if(strcmp(token, "\n") == 0){
+                    newNode->cpuBursts[cpuBurstCount++] = 0;
+                    newNode->ioBursts[ioBurstCount++] = 0;
                     token = strtok(NULL, " ");
                     break;
                 }
@@ -112,7 +119,8 @@ void insertFileInQueue(char *archName, processQueue **queue){
             queueAux->next = newNode;
         }
 
-        burstCount=0;
+        cpuBurstCount=0;
+        ioBurstCount=0;
         i=0;
 
         if(!token)
@@ -130,7 +138,8 @@ void clearPointers(processQueue **queue){
     processQueue *aux = *queue;
 
     while((*queue)->next){
-        free((*queue)->bursts);
+        free((*queue)->cpuBursts);
+        free((*queue)->ioBursts);
         *queue = (*queue)->next;
         free(aux);
         aux = *queue;
