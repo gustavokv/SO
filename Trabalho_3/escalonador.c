@@ -12,29 +12,32 @@ typedef struct processQueue{
     unsigned int submission;
     unsigned int *cpuBursts;
     unsigned int *ioBursts;
+    unsigned int cpuBurstCount;
+    unsigned int ioBurstCount;
+    unsigned int endTime;
     struct processQueue *next;
 } processQueue;
 
-void insertFileInQueue(char *archName, processQueue **queue);
+void insertFileInQueue(char *archName, processQueue **queue, unsigned int *quantProcesses);
 void printInformations();
-void FCFSAlgorithm(processQueue *queue);
+void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses);
 
 void clearPointers(processQueue **queue);
 
 int main(int argc, char *argv[]){
     char *archName = argv[1];
     unsigned int quantum = atoi(argv[2]);
-    unsigned int sequential = 0;
+    unsigned int sequential = 0, quantProcesses=0;
 
     processQueue *queue = NULL;
 
     if(argc == 4 && strcpy(argv[3], "-seq") == 0)
         sequential++;
 
-    insertFileInQueue(archName, &queue);
-   
+    insertFileInQueue(archName, &queue, &quantProcesses);
+
     /* Algoritmos fazem os escalonamentos e imprimem os resultados solicitados */
-    FCFSAlgorithm(queue);
+    FCFSAlgorithm(queue, sequential, quantProcesses);
 
     
 
@@ -44,7 +47,7 @@ int main(int argc, char *argv[]){
 }
 
 /* Faz a leitura do arquivo em uma lista encadeada de processos */
-void insertFileInQueue(char *archName, processQueue **queue){
+void insertFileInQueue(char *archName, processQueue **queue, unsigned int *quantProcesses){
     FILE *fp = fopen(archName, "rb");
 
     if(!fp){
@@ -83,6 +86,8 @@ void insertFileInQueue(char *archName, processQueue **queue){
         processQueue *newNode = malloc(sizeof(processQueue));
         newNode->cpuBursts = malloc(sizeof(unsigned int) * 100);
         newNode->ioBursts = malloc(sizeof(unsigned int) * 100);
+        newNode->cpuBurstCount = 0;
+        newNode->ioBurstCount = 0;
         newNode->next = NULL;
         
         do{
@@ -119,6 +124,7 @@ void insertFileInQueue(char *archName, processQueue **queue){
             queueAux->next = newNode;
         }
 
+        (*quantProcesses)++;
         cpuBurstCount=0;
         ioBurstCount=0;
         i=0;
@@ -130,8 +136,38 @@ void insertFileInQueue(char *archName, processQueue **queue){
     free(contentsArray);
 }
 
-void FCFSAlgorithm(processQueue *queue){
+void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses){
+    unsigned int currTime, smallestIOCounter, processCount=1, finishedProcesses=0, cpuBurstEnds[quantProcesses][2];
+    processQueue *auxQueue = queue;
+
+    printf("%u[", auxQueue->submission);
+    currTime = auxQueue->submission;
+    smallestIOCounter = auxQueue->submission + auxQueue->cpuBursts[0] + auxQueue->ioBursts[0];
     
+    /* Aqui os processos são colocados em submissão */
+    while(auxQueue){
+        if(currTime >= auxQueue->submission)
+            printf("P%u %u|", processCount++, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCount]);
+        else{
+            currTime = auxQueue->submission;
+            printf("*** %u|P%u %u|", auxQueue->submission, processCount++, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCount]);
+        }
+
+        currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCount++];
+        auxQueue->endTime = currTime;
+        
+        cpuBurstEnds[processCount-1][0] = processCount-1;
+        cpuBurstEnds[processCount-1][1] = auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCount];
+
+        auxQueue = auxQueue->next;
+    }
+    
+    if(!seq){
+        while(finishedProcesses != quantProcesses){
+            
+        }
+    }
+
 }
 
 void clearPointers(processQueue **queue){
