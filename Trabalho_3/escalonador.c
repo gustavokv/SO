@@ -188,6 +188,11 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
                 }
             }
 
+            // printf("\n\n\n");
+            // for(int i=0;i<quantIOs;i++)
+            //     printf("aaaaaa %u %u ", ioEndsPos[i], ioBurstEnds[i]);
+            // printf("\n\n\n");
+
             posToSeeArray=0;
             quantIOsAux=0;
 
@@ -200,7 +205,7 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
                     queueCounter++;
                 }
 
-                if(ioBurstEnds[queueCounter] > currTime){
+                if(ioBurstEnds[posToSeeArray] > currTime){
                     currTime = ioBurstEnds[posToSeeArray];
                     printf("*** %u|P%u %u|", currTime, queueCounter+1, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
                     currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
@@ -214,7 +219,7 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
 
                 if(auxQueue->ioBursts[auxQueue->ioBurstCounter]){
                     ioEndsPos[posToSeeArray] = posToSeeArray;
-                    ioBurstEnds[posToSeeArray] = auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter++];
+                    ioBurstEnds[posToSeeArray] = currTime + auxQueue->ioBursts[auxQueue->ioBurstCounter++];
                     quantIOsAux++;
                 }
 
@@ -223,7 +228,7 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
 
                 posToSeeArray++;
             }
-
+            
             quantIOs = quantIOsAux;
         }
     }
