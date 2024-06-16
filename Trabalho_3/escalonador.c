@@ -12,14 +12,17 @@ typedef struct processQueue{
     unsigned int submission;
     unsigned int *cpuBursts;
     unsigned int *ioBursts;
-    unsigned int cpuBurstCount;
-    unsigned int ioBurstCount;
+    unsigned int quantCpuBurst;
+    unsigned int quantIoBurst;
+    unsigned int cpuBurstCounter;
+    unsigned int ioBurstCounter;
     unsigned int endTime;
     struct processQueue *next;
 } processQueue;
 
 void insertFileInQueue(char *archName, processQueue **queue, unsigned int *quantProcesses);
 void printInformations();
+void swap(unsigned int *a, unsigned int *b);
 void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses);
 
 void clearPointers(processQueue **queue);
@@ -86,8 +89,10 @@ void insertFileInQueue(char *archName, processQueue **queue, unsigned int *quant
         processQueue *newNode = malloc(sizeof(processQueue));
         newNode->cpuBursts = malloc(sizeof(unsigned int) * 100);
         newNode->ioBursts = malloc(sizeof(unsigned int) * 100);
-        newNode->cpuBurstCount = 0;
-        newNode->ioBurstCount = 0;
+        newNode->quantCpuBurst = 0;
+        newNode->quantIoBurst = 0;
+        newNode->cpuBurstCounter = 0;
+        newNode->ioBurstCounter = 0;
         newNode->next = NULL;
         
         do{
@@ -112,8 +117,8 @@ void insertFileInQueue(char *archName, processQueue **queue, unsigned int *quant
             i++;    
         } while(token = strtok(NULL, " "));
 
-        newNode->cpuBurstCount = cpuBurstCount-2;
-        newNode->ioBurstCount = ioBurstCount-2;
+        newNode->quantCpuBurst = cpuBurstCount-2;
+        newNode->quantIoBurst = ioBurstCount-2;
 
         /* Salva na lista encadeada o novo nó criado do processo */
         if(!(*queue))
@@ -140,43 +145,95 @@ void insertFileInQueue(char *archName, processQueue **queue, unsigned int *quant
 }
 
 void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses){
-    unsigned int currTime, smallestIOCounter, processCount=0, finishedProcesses=0, ioBurstEnds[quantProcesses][2];
+    unsigned int currTime, processCount=0, finishedProcesses=0, ioBurstEnds[quantProcesses], ioEndsPos[quantProcesses];
+    unsigned int quantIOs=0;
     processQueue *auxQueue = queue;
 
-    printf("%u[", auxQueue->submission);
+    printf("%u|", auxQueue->submission);
     currTime = auxQueue->submission;
-    smallestIOCounter = auxQueue->submission + auxQueue->cpuBursts[0] + auxQueue->ioBursts[0];
     
     /* Aqui os processos são colocados em submissão */
     while(auxQueue){
         if(currTime >= auxQueue->submission)
-            printf("P%u %u|", ++processCount, currTime + auxQueue->cpuBursts[0]);
+            printf("P%u %u|", ++processCount, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
         else{
             currTime = auxQueue->submission;
-            printf("*** %u|P%u %u|", auxQueue->submission, ++processCount, currTime + auxQueue->cpuBursts[0]);
+            printf("*** %u|P%u %u|", auxQueue->submission, ++processCount, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
         }
 
-        currTime += auxQueue->cpuBursts[0];
+        currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
         auxQueue->endTime = currTime;
 
-        ioBurstEnds[processCount-1][0] = processCount-1;
-        ioBurstEnds[processCount-1][1] = auxQueue->endTime + auxQueue->ioBursts[0];
+        if(auxQueue->ioBursts[0]){
+            ioEndsPos[processCount-1] = processCount-1;
+            ioBurstEnds[processCount-1] = auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter++];
+            quantIOs++;
+        }
+        else    
+            finishedProcesses++;
 
         auxQueue = auxQueue->next;
     }
 
-    for(int i=0;i<quantProcesses;i++){
-        for(int j=0;j<2;j++){
-            printf("\n%u aaaa", ioBurstEnds[i][j]);
-        }
-    }
+    unsigned int queueCounter, posToSeeArray, quantIOsAux;
 
     if(!seq){
         while(finishedProcesses != quantProcesses){
-            
+            for(int i=1;i<quantIOs;i++){
+                for(int j=0;j<quantIOs - i;j++){
+                    if(ioBurstEnds[j] > ioBurstEnds[j+1]){
+                        swap(&ioBurstEnds[j], &ioBurstEnds[j+1]);
+                        swap(&ioEndsPos[j], &ioEndsPos[j+1]);
+                    }
+                }
+            }
+
+            posToSeeArray=0;
+            quantIOsAux=0;
+
+            while(posToSeeArray != quantIOs){
+                auxQueue = queue;
+                queueCounter=0;
+
+                while(queueCounter != ioEndsPos[posToSeeArray]){
+                    auxQueue = auxQueue->next;
+                    queueCounter++;
+                }
+
+                if(ioBurstEnds[queueCounter] > currTime){
+                    currTime = ioBurstEnds[posToSeeArray];
+                    printf("*** %u|P%u %u|", currTime, queueCounter+1, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+                    currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
+                }
+                else{
+                    printf("P%u %u|", queueCounter+1, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+                    currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
+                }
+
+                auxQueue->endTime = currTime;
+
+                if(auxQueue->ioBursts[auxQueue->ioBurstCounter]){
+                    ioEndsPos[posToSeeArray] = posToSeeArray;
+                    ioBurstEnds[posToSeeArray] = auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter++];
+                    quantIOsAux++;
+                }
+
+                if(!(auxQueue->cpuBursts[auxQueue->cpuBurstCounter]))
+                    finishedProcesses++;
+
+                posToSeeArray++;
+            }
+
+            quantIOs = quantIOsAux;
         }
     }
 
+}
+
+void swap(unsigned int *a, unsigned int *b){
+    unsigned int aux = *a;
+    *a = *b;
+    *b = aux;
 }
 
 void clearPointers(processQueue **queue){
