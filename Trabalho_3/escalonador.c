@@ -40,6 +40,7 @@ int main(int argc, char *argv[]){
     insertFileInQueue(archName, &queue, &quantProcesses);
 
     /* Algoritmos fazem os escalonamentos e imprimem os resultados solicitados */
+    printf("---------------\n1. Algoritmo FCFS\n---------------\n\n");
     FCFSAlgorithm(queue, sequential, quantProcesses);
 
     
@@ -148,7 +149,8 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
     unsigned int currTime, processCount=0, finishedProcesses=0, ioBurstEnds[quantProcesses], ioEndsPos[quantProcesses];
     unsigned int quantIOs=0;
     processQueue *auxQueue = queue;
-
+    
+    printf("-> Diagrama de Gantt\n\n");
     printf("%u|", auxQueue->submission);
     currTime = auxQueue->submission;
     
