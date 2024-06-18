@@ -177,7 +177,7 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
         auxQueue = auxQueue->next;
     }
 
-    unsigned int queueCounter, posToSeeArray, quantIOsAux;
+    unsigned int posToSeeArray, quantIOsAux;
 
     if(!seq){
         while(finishedProcesses != quantProcesses){
@@ -200,28 +200,29 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
 
             while(posToSeeArray != quantIOs){
                 auxQueue = queue;
-                queueCounter=0;
+                processCount=0;
 
-                while(queueCounter != ioEndsPos[posToSeeArray]){
+                while(processCount != ioEndsPos[posToSeeArray]){
                     auxQueue = auxQueue->next;
-                    queueCounter++;
+                    processCount++;
                 }
 
                 if(ioBurstEnds[posToSeeArray] > currTime){
                     currTime = ioBurstEnds[posToSeeArray];
-                    printf("*** %u|P%u %u|", currTime, queueCounter+1, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+                    printf("*** %u|P%u %u|", currTime, processCount+1, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
                     currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
                 }
                 else{
-                    printf("P%u %u|", queueCounter+1, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+                    printf("P%u %u|", processCount+1, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
                     currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
                 }
 
                 auxQueue->endTime = currTime;
 
+                printf("aqui %u\n", auxQueue->ioBursts[auxQueue->ioBurstCounter]);
                 if(auxQueue->ioBursts[auxQueue->ioBurstCounter]){
-                    ioEndsPos[posToSeeArray] = posToSeeArray;
-                    ioBurstEnds[posToSeeArray] = currTime + auxQueue->ioBursts[auxQueue->ioBurstCounter++];
+                    ioEndsPos[processCount] = processCount;
+                    ioBurstEnds[processCount] = currTime + auxQueue->ioBursts[auxQueue->ioBurstCounter++];
                     quantIOsAux++;
                 }
 
