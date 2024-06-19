@@ -26,32 +26,38 @@ typedef struct processQueue{
 } processQueue;
 
 void insertFileInQueue(char *archName, processQueue **queue, unsigned int *quantProcesses);
-
+void copyToFile(char *fileName, char *insert);
 
 void swap(unsigned int *a, unsigned int *b);
 void clearPointers(processQueue **queue);
 void sortArray(unsigned int *ioBurstEnds, unsigned int quantIOsArray);
 
-void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses);
+void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName);
 
 int main(int argc, char *argv[]){
-    char *archName = argv[1];
+    char *archName = argv[1], fileName[strlen(argv[1])+4];
     unsigned int quantum = atoi(argv[2]);
     unsigned int sequential = 0, quantProcesses=0;
 
     processQueue *queue = NULL;
 
-    if(argc == 4 && strcpy(argv[3], "-seq") == 0)
+    if(argc == 4 && strcmp(argv[3], "-seq") == 0)
         sequential++;
+    
+    memcpy(fileName, archName, strlen(archName) - 3);
+    strcat(fileName, ".out");
+    
+    FILE *fp = fopen(fileName, "ab");
 
     insertFileInQueue(archName, &queue, &quantProcesses);
 
     /* Algoritmos fazem os escalonamentos e imprimem os resultados solicitados */
-    printf("---------------\n1. Algoritmo FCFS\n---------------\n\n");
-    FCFSAlgorithm(queue, sequential, quantProcesses);
+    fwrite("FCFS: ", 1, sizeof("FCFS: "), fp);
+    FCFSAlgorithm(queue, sequential, quantProcesses, fileName);
 
     
 
+    fclose(fp);
     clearPointers(&queue);
 
     return 0;
@@ -152,12 +158,11 @@ void insertFileInQueue(char *archName, processQueue **queue, unsigned int *quant
     free(contentsArray);
 }
 
-void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses){
-    unsigned int currTime, finishedProcesses=0, ioBurstEnds[quantProcesses];
-    unsigned int quantIOsArray=0, ioArrayCounter=0;
+void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName){
+    unsigned int currTime, finishedProcesses=0, ioBurstEnds[quantProcesses], ioBurstEndsAux[quantProcesses];
+    unsigned int quantIOsArray=0, ioArrayCounter=0, auxCounter;
     processQueue *auxQueue = queue;
     
-    printf("-> Diagrama de Gantt\n\n");
     printf("%u|", auxQueue->submission);
     currTime = auxQueue->submission;
 
@@ -185,103 +190,51 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
         sortArray(ioBurstEnds, quantIOsArray);
 
         auxQueue = queue;
+        auxCounter = 0;
 
-        /* Acha o processo que encerrará primeiro */
-        while(auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter] != ioBurstEnds[ioArrayCounter])
-            auxQueue = auxQueue->next;
+        while(ioArrayCounter < quantIOsArray){
 
-        if(auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter] <= currTime)
-            printf("P%u %u|", auxQueue->processValue, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
-        else{
-            currTime = auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter];
-            printf("*** %u|P%u %u|", currTime, auxQueue->processValue, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+            /* Acha o processo que encerrará primeiro */
+            while(auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter] != ioBurstEnds[ioArrayCounter])
+                auxQueue = auxQueue->next;
+
+            if(auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter] <= currTime)
+                printf("P%u %u|", auxQueue->processValue, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+            else{
+                currTime = auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter];
+                printf("*** %u|P%u %u|", currTime, auxQueue->processValue, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+            }
+
+            auxQueue->ioBurstCounter++;
+            currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
+            auxQueue->endTime = currTime;
+            
+            /* Caso o processo ainda possua E/S, continua executando */
+            if(auxQueue->ioBurstCounter < auxQueue->quantIoBurst){
+                ioBurstEndsAux[auxCounter] = currTime + auxQueue->ioBursts[auxQueue->ioBurstCounter];
+                auxCounter++;
+            }
+            else
+                finishedProcesses++;
+
+            ioArrayCounter++;  
+            auxQueue = queue;
         }
 
-        auxQueue->ioBurstCounter++;
-        currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
-        auxQueue->endTime = currTime;
-        
-        if(auxQueue->ioBurstCounter < auxQueue->quantIoBurst)
-                        
+        ioArrayCounter = 0;
+        quantIOsArray = auxCounter;
 
+        for(unsigned int i=0;i<auxCounter;i++)
+            ioBurstEnds[i] = ioBurstEndsAux[i];
     }
-    
-    // /* Aqui os processos são colocados em submissão */
-    // while(auxQueue){
-    //     if(currTime >= auxQueue->submission)
-    //         printf("P%u %u|", ++processCount, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
-    //     else{
-    //         currTime = auxQueue->submission;
-    //         printf("*** %u|P%u %u|", auxQueue->submission, ++processCount, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
-    //     }
+}
 
-    //     currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
-    //     auxQueue->endTime = currTime;
+void copyToFile(char *fileName, char *insert){
+    FILE *fp = fopen(fileName, "ab");
 
-    //     if(auxQueue->ioBursts[0]){
-    //         ioEndsPos[processCount-1] = processCount-1;
-    //         ioBurstEnds[processCount-1] = auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter++];
-    //         quantIOs++;
-    //     }
-    //     else    
-    //         finishedProcesses++;
+    fwrite(insert, 1, sizeof(insert), fp);
 
-    //     auxQueue = auxQueue->next;
-    // }
-
-    // unsigned int posToSeeArray, quantIOsAux;
-
-    // if(!seq){
-    //     while(finishedProcesses != quantProcesses){
-    //         for(int i=1;i<quantIOs;i++){
-    //             for(int j=0;j<quantIOs - i;j++){
-    //                 if(ioBurstEnds[j] > ioBurstEnds[j+1]){
-    //                     swap(&ioBurstEnds[j], &ioBurstEnds[j+1]);
-    //                     swap(&ioEndsPos[j], &ioEndsPos[j+1]);
-    //                 }
-    //             }
-    //         }
-
-    //         posToSeeArray=0;
-    //         quantIOsAux=0;
-
-    //         while(posToSeeArray != quantIOs){
-    //             auxQueue = queue;
-    //             processCount=0;
-
-    //             while(processCount != ioEndsPos[posToSeeArray]){
-    //                 auxQueue = auxQueue->next;
-    //                 processCount++;
-    //             }
-
-    //             if(ioBurstEnds[posToSeeArray] > currTime){
-    //                 currTime = ioBurstEnds[posToSeeArray];
-    //                 printf("*** %u|P%u %u|", currTime, processCount+1, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
-    //                 currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
-    //             }
-    //             else{
-    //                 printf("P%u %u|", processCount+1, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
-    //                 currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
-    //             }
-
-    //             auxQueue->endTime = currTime;
-
-    //             if(auxQueue->ioBursts[auxQueue->ioBurstCounter]){
-    //                 ioEndsPos[processCount] = processCount;
-    //                 ioBurstEnds[processCount] = currTime + auxQueue->ioBursts[auxQueue->ioBurstCounter++];
-    //                 quantIOsAux++;
-    //             }
-
-    //             if(!(auxQueue->cpuBursts[auxQueue->cpuBurstCounter]))
-    //                 finishedProcesses++;
-
-    //             posToSeeArray++;
-    //         }
-            
-    //         quantIOs = quantIOsAux;
-    //     }
-    // }
-
+    fclose(fp);
 }
 
 void sortArray(unsigned int *ioBurstEnds, unsigned int quantIOsArray){
