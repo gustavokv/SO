@@ -55,9 +55,9 @@ int main(int argc, char *argv[]){
     insertFileInQueue(archName, &queue, &quantProcesses);
 
     /* Algoritmos fazem os escalonamentos e imprimem os resultados solicitados */
-    copyToFile(outFileName, "FCFS:\n\nDiagrama de Gantt: ");
+    copyToFile(outFileName, "------------------------------------------FCFS------------------------------------------\n\nDiagrama de Gantt: ");
     FCFSAlgorithm(queue, sequential, quantProcesses, outFileName);
-    copyToFile(outFileName, "\n\nSJF:\n\nDiagrama de Gantt: ");
+    copyToFile(outFileName, "\n\n------------------------------------------SJF------------------------------------------\n\nDiagrama de Gantt: ");
     SJFAlgorithm(queue, sequential, quantProcesses, outFileName);
 
     
