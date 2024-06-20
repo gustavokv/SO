@@ -21,6 +21,9 @@ typedef struct processQueue{
 
     unsigned int processValue;
 
+    unsigned int waitTime;
+    unsigned int turnAround;
+
     unsigned int endTime;
     struct processQueue *next;
 } processQueue;
@@ -33,9 +36,10 @@ void clearPointers(processQueue **queue);
 void sortArray(unsigned int *ioBurstEnds, unsigned int quantIOsArray);
 
 void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName);
+void SJFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName);
 
 int main(int argc, char *argv[]){
-    char *archName = argv[1], fileName[strlen(argv[1])+4];
+    char *archName = argv[1], outFileName[strlen(argv[1])+4];
     unsigned int quantum = atoi(argv[2]);
     unsigned int sequential = 0, quantProcesses=0;
 
@@ -44,20 +48,20 @@ int main(int argc, char *argv[]){
     if(argc == 4 && strcmp(argv[3], "-seq") == 0)
         sequential++;
     
-    memcpy(fileName, archName, strlen(archName) - 3);
-    strcat(fileName, ".out");
-    
-    FILE *fp = fopen(fileName, "ab");
+    memcpy(outFileName, archName, strlen(archName) - 3);
+    strcat(outFileName, ".out");
+    remove(outFileName);
 
     insertFileInQueue(archName, &queue, &quantProcesses);
 
     /* Algoritmos fazem os escalonamentos e imprimem os resultados solicitados */
-    fwrite("FCFS: ", 1, sizeof("FCFS: "), fp);
-    FCFSAlgorithm(queue, sequential, quantProcesses, fileName);
+    copyToFile(outFileName, "FCFS:\n\nDiagrama de Gantt: ");
+    FCFSAlgorithm(queue, sequential, quantProcesses, outFileName);
+    copyToFile(outFileName, "\n\nSJF:\n\nDiagrama de Gantt: ");
+    SJFAlgorithm(queue, sequential, quantProcesses, outFileName);
 
     
 
-    fclose(fp);
     clearPointers(&queue);
 
     return 0;
@@ -108,6 +112,8 @@ void insertFileInQueue(char *archName, processQueue **queue, unsigned int *quant
         newNode->cpuBurstCounter = 0;
         newNode->ioBurstCounter = 0;
         newNode->processValue = (*quantProcesses) + 1;
+        newNode->waitTime = 0;
+        newNode->turnAround = 0;
         newNode->next = NULL;
         
         do{
@@ -160,34 +166,61 @@ void insertFileInQueue(char *archName, processQueue **queue, unsigned int *quant
 
 void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName){
     unsigned int currTime, finishedProcesses=0, ioBurstEnds[quantProcesses], ioBurstEndsAux[quantProcesses];
-    unsigned int quantIOsArray=0, ioArrayCounter=0, auxCounter;
+    unsigned int quantIOsArray=0, ioArrayCounter=0, auxCounter, totalTurnaround=0, cpuUsageMs=0;
+    char str[1000], numToChar[10];
     processQueue *auxQueue = queue;
     
-    printf("%u|", auxQueue->submission);
+    sprintf(str, "%u", auxQueue->submission);
+    strcat(str, "|");
+    copyToFile(fileName, str);
+
     currTime = auxQueue->submission;
 
     while(auxQueue){
-        if(currTime >= auxQueue->submission) /* Caso o tempo corrente seja maior ou igual a submissão, ele segue normalmente */
-            printf("P%u %u|", auxQueue->processValue, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+        if(currTime >= auxQueue->submission){ /* Caso o tempo corrente seja maior ou igual a submissão, ele segue normalmente */
+            strcpy(str, "P");
+            sprintf(numToChar, "%u", auxQueue->processValue);
+            strcat(str, numToChar);
+            strcat(str, " ");
+            sprintf(numToChar, "%u", currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+            strcat(str, numToChar);
+            strcat(str, "|");
+            copyToFile(fileName, str);
+        }
         else{ /* Caso o tempo corrente seja menor que o tempo de submissão, haverá um tempo ocioso no cpu */
             currTime = auxQueue->submission;
-            printf("*** %u|P%u %u|", currTime, auxQueue->processValue, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+
+            strcpy(str, "*** ");
+            sprintf(numToChar, "%u", currTime);
+            strcat(str, numToChar);
+            strcat(str, "|P");
+            sprintf(numToChar, "%u", auxQueue->processValue);
+            strcat(str, numToChar);
+            strcat(str, " ");
+            sprintf(numToChar, "%u", currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+            strcat(str, numToChar);
+            strcat(str, "|");
+            copyToFile(fileName, str);
         }
 
+        cpuUsageMs += auxQueue->cpuBursts[auxQueue->cpuBurstCounter];
         currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
         auxQueue->endTime = currTime;
         
         /* Array para guardar as E/S dos processos, caso possuam */
         if(auxQueue->quantIoBurst > 0)
             ioBurstEnds[quantIOsArray++] = currTime + auxQueue->ioBursts[auxQueue->ioBurstCounter];
-        else
+        else{
             finishedProcesses++;
+            auxQueue->turnAround = currTime - auxQueue->submission;
+        }
 
         auxQueue = auxQueue->next;
     }
 
     while(finishedProcesses < quantProcesses){
-        sortArray(ioBurstEnds, quantIOsArray);
+        if(!seq)
+            sortArray(ioBurstEnds, quantIOsArray);
 
         auxQueue = queue;
         auxCounter = 0;
@@ -198,12 +231,34 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
             while(auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter] != ioBurstEnds[ioArrayCounter])
                 auxQueue = auxQueue->next;
 
-            if(auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter] <= currTime)
-                printf("P%u %u|", auxQueue->processValue, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+            if(auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter] <= currTime){
+                strcpy(str, "P");
+                sprintf(numToChar, "%u", auxQueue->processValue);
+                strcat(str, numToChar);
+                strcat(str, " ");
+                sprintf(numToChar, "%u", currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+                strcat(str, numToChar);
+                strcat(str, "|");
+                copyToFile(fileName, str);
+            }
             else{
                 currTime = auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter];
-                printf("*** %u|P%u %u|", currTime, auxQueue->processValue, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+
+                strcpy(str, "*** ");
+                sprintf(numToChar, "%u", currTime);
+                strcat(str, numToChar);
+                strcat(str, "|P");
+                sprintf(numToChar, "%u", auxQueue->processValue);
+                strcat(str, numToChar);
+                strcat(str, " ");
+                sprintf(numToChar, "%u", currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+                strcat(str, numToChar);
+                strcat(str, "|");
+                copyToFile(fileName, str);
             }
+            
+            auxQueue->waitTime += currTime - auxQueue->endTime;
+            cpuUsageMs += auxQueue->cpuBursts[auxQueue->cpuBurstCounter];
 
             auxQueue->ioBurstCounter++;
             currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
@@ -214,8 +269,10 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
                 ioBurstEndsAux[auxCounter] = currTime + auxQueue->ioBursts[auxQueue->ioBurstCounter];
                 auxCounter++;
             }
-            else
+            else{
                 finishedProcesses++;
+                auxQueue->turnAround = auxQueue->endTime - auxQueue->submission;
+            }
 
             ioArrayCounter++;  
             auxQueue = queue;
@@ -227,14 +284,92 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
         for(unsigned int i=0;i<auxCounter;i++)
             ioBurstEnds[i] = ioBurstEndsAux[i];
     }
+
+    /* Aqui é calculado o uso de CPU */
+    totalTurnaround = currTime - queue->submission;
+    float x = (cpuUsageMs * 100) / (totalTurnaround * 1.0);
+
+    strcpy(str, "\nUtilização de CPU: ");
+    sprintf(numToChar, "%.2f", x);
+    strcat(str, numToChar);
+    strcat(str, "%");
+    copyToFile(fileName, str);
+
+    /* Aqui é calculado o throughput */
+    float throughput = quantProcesses * 1.0 / (currTime - queue->submission);
+
+    strcpy(str, "\nThroughput: ");
+    sprintf(numToChar, "%.4f", throughput);
+    strcat(str, numToChar);
+    strcat(str, " processos/segundo");
+    copyToFile(fileName, str);
+
+    /* Aqui é dado o tempo de espera de cada processo */
+    unsigned int sum = 0;
+    auxQueue = queue;
+    strcpy(str, "\nTempo de espera de cada processo: ");
+    while(auxQueue){
+        strcat(str, "P");
+        sprintf(numToChar, "%u", auxQueue->processValue);
+        strcat(str, numToChar);
+        strcat(str, ": ");
+        sprintf(numToChar, "%u", auxQueue->waitTime);
+        strcat(str, numToChar);
+        strcat(str, "ms ");
+
+        sum += auxQueue->waitTime;
+        auxQueue = auxQueue->next;
+    }
+
+    copyToFile(fileName, str);
+
+    strcpy(str, "\nTempo de espera médio: ");
+    x = sum * 1.0 / quantProcesses;
+    sprintf(numToChar, "%.1f", x);
+    strcat(str, numToChar);
+    strcat(str, "ms");
+
+    copyToFile(fileName, str);
+
+    sum = 0;
+
+    auxQueue = queue;
+    strcpy(str, "\nTempo de turnaround de cada processo: ");
+    while(auxQueue){
+        strcat(str, "P");
+        sprintf(numToChar, "%u", auxQueue->processValue);
+        strcat(str, numToChar);
+        strcat(str, ": ");
+        sprintf(numToChar, "%u", auxQueue->turnAround);
+        strcat(str, numToChar);
+        strcat(str, "ms ");
+
+        sum += auxQueue->turnAround;
+        auxQueue = auxQueue->next;
+    }
+
+    copyToFile(fileName, str);
+
+    strcpy(str, "\nTempo de turnaround médio: ");
+    x = sum * 1.0 / quantProcesses;
+    sprintf(numToChar, "%.1f", x);
+    strcat(str, numToChar);
+    strcat(str, "ms");
+
+    copyToFile(fileName, str);
 }
 
+void SJFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName){
+
+}
+
+/* Concatena em determiado arquivo uma string */
 void copyToFile(char *fileName, char *insert){
-    FILE *fp = fopen(fileName, "ab");
+    FILE *file = fopen(fileName, "a+");
 
-    fwrite(insert, 1, sizeof(insert), fp);
+    fprintf(file, "%s", insert);
 
-    fclose(fp);
+    fclose(file);
 }
 
 void sortArray(unsigned int *ioBurstEnds, unsigned int quantIOsArray){
