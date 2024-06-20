@@ -33,7 +33,7 @@ void copyToFile(char *fileName, char *insert);
 
 void swap(unsigned int *a, unsigned int *b);
 void clearPointers(processQueue **queue);
-void sortArray(unsigned int *ioBurstEnds, unsigned int quantIOsArray);
+void sortArray(unsigned int *array, unsigned int n);
 void resetStruct(processQueue **queue);
 
 void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName);
@@ -208,8 +208,7 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
     }
 
     while(finishedProcesses < quantProcesses){
-        if(!seq)
-            sortArray(ioBurstEnds, quantIOsArray);
+        sortArray(ioBurstEnds, quantIOsArray);
 
         auxQueue = queue;
         auxCounter = 0;
@@ -313,24 +312,69 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
 }
 
 void SJFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName){
-    unsigned int currTime, cpuBurstsSorted[quantProcesses], burstCounter=0;
+    unsigned int currTime, cpuBurstsSorted[quantProcesses], cpuBurstsSortedAux[quantProcesses], burstCounter=0;
+    unsigned int finishedProcesses=0, auxCounter=0, burstCounterAux=0;
     char str[1000], numToChar[10];
     processQueue *auxQueue = queue;
 
-    sprintf(str, "%u|P%u %u|", auxQueue->submission, auxQueue->processValue, auxQueue->submission + auxQueue->cpuBursts[auxQueue->cpuBurstCounter++]);
+    /* Faz a submissão do primeiro processo */
+    sprintf(str, "%u|P%u %u|", auxQueue->submission, auxQueue->processValue, auxQueue->submission + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
     copyToFile(fileName, str);
 
-    currTime = auxQueue->submission;
+    currTime = auxQueue->submission + auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
+    if(auxQueue->cpuBurstCounter < auxQueue->quantCpuBurst)
+        cpuBurstsSortedAux[burstCounterAux++] = auxQueue->cpuBursts[auxQueue->cpuBurstCounter];
+    auxQueue->endTime = currTime;
     auxQueue = auxQueue->next;
 
+    /* Guarda no array os bursts para comparar qual o menor */
     while(auxQueue){
         cpuBurstsSorted[burstCounter++] = auxQueue->cpuBursts[auxQueue->cpuBurstCounter];
         auxQueue = auxQueue->next;
     }
-
     auxQueue = queue;
 
+    sortArray(cpuBurstsSorted, burstCounter);
 
+    /* Faz a submissão dos processos na ordem*/
+    while(auxCounter < burstCounter){
+        while(auxQueue->cpuBursts[auxQueue->cpuBurstCounter] != cpuBurstsSorted[auxCounter])
+            auxQueue = auxQueue->next;
+
+        if(auxQueue->submission <= currTime){
+            sprintf(str, "P%u %u|", auxQueue->processValue, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+            copyToFile(fileName, str);
+        }
+        else{
+            currTime = auxQueue->submission;
+
+            sprintf(str, "*** %u|P%u %u|", currTime, auxQueue->processValue, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+            copyToFile(fileName, str);
+        }
+
+        currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
+        auxQueue->endTime = currTime;
+
+        if(auxQueue->cpuBurstCounter < auxQueue->quantCpuBurst){
+            cpuBurstsSortedAux[burstCounterAux] = auxQueue->cpuBursts[auxQueue->cpuBurstCounter];
+            burstCounterAux++;
+        }
+
+        auxQueue = queue;
+        auxCounter++;
+    }
+
+    burstCounter = burstCounterAux;
+
+    for(int i=0;i<burstCounter;i++)
+        cpuBurstsSorted[i] = cpuBurstsSortedAux[i];
+
+    for(int i=0;i<burstCounter;i++)
+        printf("aaaa %u\n", cpuBurstsSorted[i]);
+    
+    // while(finishedProcesses < quantProcesses){
+
+    // }
 
 }
 
@@ -356,11 +400,11 @@ void copyToFile(char *fileName, char *insert){
     fclose(file);
 }
 
-void sortArray(unsigned int *ioBurstEnds, unsigned int quantIOsArray){
-    for(int i=1;i<quantIOsArray;i++)
-        for(int j=0;j<quantIOsArray - i;j++)
-            if(ioBurstEnds[j] > ioBurstEnds[j+1])
-                swap(&ioBurstEnds[j], &ioBurstEnds[j+1]);
+void sortArray(unsigned int *array, unsigned int n){
+    for(int i=1;i<n;i++)
+        for(int j=0;j<n - i;j++)
+            if(array[j] > array[j+1])
+                swap(&array[j], &array[j+1]);
         
 }
 
