@@ -3,8 +3,8 @@
 Diagrama de Gantt: 4|P1 14|P2 19|P3 21|P4 33|*** 36|P3 38|*** 40|P2 50|P1 53|
 Utilização de CPU: 89.80%
 Throughput: 0.0816 processos/segundo
-Tempo de espera de cada processo: P1: 36ms P2: 21ms P3: 15ms P4: 0ms 
-Tempo de espera médio: 18.0ms
+Tempo de espera de cada processo: P1: 36ms P2: 35ms P3: 34ms P4: 21ms 
+Tempo de espera médio: 31.5ms
 Tempo de turnaround de cada processo: P1: 49ms P2: 43ms P3: 27ms P4: 20ms 
 Tempo de turnaround médio: 34.8ms
 

@@ -205,6 +205,8 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
 
         cpuUsageMs += auxQueue->cpuBursts[auxQueue->cpuBurstCounter];
         currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
+        if(auxQueue->next)
+            auxQueue->next->waitTime += currTime;
         auxQueue->endTime = currTime;
         
         /* Array para guardar as E/S dos processos, caso possuam */
