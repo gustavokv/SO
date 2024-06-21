@@ -312,8 +312,8 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
 }
 
 void SJFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName){
-    unsigned int currTime, cpuBurstsSorted[quantProcesses], cpuBurstsSortedAux[quantProcesses], burstCounter=0;
-    unsigned int finishedProcesses=0, auxCounter=0, burstCounterAux=0;
+    unsigned int currTime, auxArray[quantProcesses], ioBurstsSorted[quantProcesses], quantCpuBurst=0;
+    unsigned int finishedProcesses=0, auxCounter=0, quantIOBurst=0, ioBurstCounter=0;
     char str[1000], numToChar[10];
     processQueue *auxQueue = queue;
 
@@ -322,23 +322,27 @@ void SJFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProce
     copyToFile(fileName, str);
 
     currTime = auxQueue->submission + auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
-    if(auxQueue->cpuBurstCounter < auxQueue->quantCpuBurst)
-        cpuBurstsSortedAux[burstCounterAux++] = auxQueue->cpuBursts[auxQueue->cpuBurstCounter];
+
+    if(auxQueue->quantIoBurst > 0){
+        ioBurstsSorted[quantIOBurst] = currTime + auxQueue->ioBursts[auxQueue->ioBurstCounter];
+        quantIOBurst++;
+    }
+
     auxQueue->endTime = currTime;
     auxQueue = auxQueue->next;
 
     /* Guarda no array os bursts para comparar qual o menor */
     while(auxQueue){
-        cpuBurstsSorted[burstCounter++] = auxQueue->cpuBursts[auxQueue->cpuBurstCounter];
+        auxArray[quantCpuBurst++] = auxQueue->cpuBursts[auxQueue->cpuBurstCounter];
         auxQueue = auxQueue->next;
     }
     auxQueue = queue;
 
-    sortArray(cpuBurstsSorted, burstCounter);
+    sortArray(auxArray, quantCpuBurst);
 
     /* Faz a submissão dos processos na ordem*/
-    while(auxCounter < burstCounter){
-        while(auxQueue->cpuBursts[auxQueue->cpuBurstCounter] != cpuBurstsSorted[auxCounter])
+    while(auxCounter < quantCpuBurst){
+        while(auxQueue->cpuBursts[auxQueue->cpuBurstCounter] != auxArray[auxCounter])
             auxQueue = auxQueue->next;
 
         if(auxQueue->submission <= currTime){
@@ -355,27 +359,65 @@ void SJFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProce
         currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
         auxQueue->endTime = currTime;
 
-        if(auxQueue->cpuBurstCounter < auxQueue->quantCpuBurst){
-            cpuBurstsSortedAux[burstCounterAux] = auxQueue->cpuBursts[auxQueue->cpuBurstCounter];
-            burstCounterAux++;
+        if(auxQueue->quantIoBurst > 0){
+            ioBurstsSorted[quantIOBurst] = currTime + auxQueue->ioBursts[auxQueue->ioBurstCounter];
+            quantIOBurst++;
         }
+        else
+            finishedProcesses++;
 
         auxQueue = queue;
         auxCounter++;
     }
 
-    burstCounter = burstCounterAux;
+    while(finishedProcesses < quantProcesses){
+        sortArray(ioBurstsSorted, quantIOBurst);
 
-    for(int i=0;i<burstCounter;i++)
-        cpuBurstsSorted[i] = cpuBurstsSortedAux[i];
+        auxCounter = 0;
+        auxQueue = queue;
 
-    for(int i=0;i<burstCounter;i++)
-        printf("aaaa %u\n", cpuBurstsSorted[i]);
-    
-    // while(finishedProcesses < quantProcesses){
+        while(auxCounter < quantIOBurst){
+            /* Acha o processo que encerrará primeiro */
+            while(auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter] != ioBurstsSorted[auxCounter])
+                auxQueue = auxQueue->next;
 
-    // }
+            if(auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter] <= currTime){
+                sprintf(str, "P%u %u|", auxQueue->processValue, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+                copyToFile(fileName, str);
+            }
+            else{
+                currTime = auxQueue->endTime + auxQueue->ioBursts[auxQueue->ioBurstCounter];
 
+                sprintf(str, "*** %u|P%u %u|", currTime, auxQueue->processValue, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
+                copyToFile(fileName, str);
+            }
+
+            auxQueue->waitTime += currTime - auxQueue->endTime;
+            //cpuUsageMs += auxQueue->cpuBursts[auxQueue->cpuBurstCounter];
+
+            auxQueue->ioBurstCounter++;
+            currTime += auxQueue->cpuBursts[auxQueue->cpuBurstCounter++];
+            auxQueue->endTime = currTime;
+            
+            /* Caso o processo ainda possua E/S, continua executando */
+            if(auxQueue->ioBurstCounter < auxQueue->quantIoBurst){
+                auxArray[ioBurstCounter] = currTime + auxQueue->ioBursts[auxQueue->ioBurstCounter];
+                ioBurstCounter++;
+            }
+            else{
+                finishedProcesses++;
+                auxQueue->turnAround = auxQueue->endTime - auxQueue->submission;
+            }
+
+            auxCounter++;
+            auxQueue = queue;
+        }
+        ioBurstCounter = 0;
+        quantIOBurst = ioBurstCounter;
+
+        for(unsigned int i=0;i<ioBurstCounter;i++)
+            ioBurstsSorted[i] = auxArray[i];
+    }
 }
 
 void resetStruct(processQueue **queue){
