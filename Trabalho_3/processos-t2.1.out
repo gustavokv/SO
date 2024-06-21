@@ -11,3 +11,9 @@ Tempo de turnaround médio: 34.8ms
 ------------------------------------------SJF------------------------------------------
 
 Diagrama de Gantt: 4|P1 14|P3 16|P2 21|P4 33|P3 35|*** 42|P2 52|P1 55|
+Utilização de CPU: 86.27%
+Throughput: 0.0784 processos/segundo
+Tempo de espera de cada processo: P1: 74ms P2: 70ms P3: 72ms P4: 37ms 
+Tempo de espera médio: 63.2ms
+Tempo de turnaround de cada processo: P1: 51ms P2: 45ms P3: 24ms P4: 20ms 
+Tempo de turnaround médio: 35.0ms

@@ -35,6 +35,8 @@ void swap(unsigned int *a, unsigned int *b);
 void clearPointers(processQueue **queue);
 void sortArray(unsigned int *array, unsigned int n);
 void resetStruct(processQueue **queue);
+void insertInfoToFile(unsigned int currTime, processQueue *queue, unsigned int cpuUsageMs, 
+                        char *fileName, unsigned int quantProcesses);
 
 void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName);
 void SJFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName);
@@ -258,57 +260,7 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
             ioBurstEnds[i] = ioBurstEndsAux[i];
     }
 
-    /* Aqui é calculado o uso de CPU */
-    totalTurnaround = currTime - queue->submission;
-    float x = (cpuUsageMs * 100) / (totalTurnaround * 1.0);
-
-    sprintf(str, "\nUtilização de CPU: %.2f%%", x);
-    copyToFile(fileName, str);
-
-    /* Aqui é calculado o throughput */
-    float throughput = quantProcesses * 1.0 / (currTime - queue->submission);
-
-    sprintf(str, "\nThroughput: %.4f processos/segundo", throughput);
-    copyToFile(fileName, str);
-
-    /* Aqui é dado o tempo de espera de cada processo */
-    unsigned int sum = 0;
-    auxQueue = queue;
-    memset(str, 0, strlen(str));
-    strcat(str, "\nTempo de espera de cada processo: ");
-    while(auxQueue){
-        sprintf(strAux, "P%u: %ums ", auxQueue->processValue, auxQueue->waitTime);
-        strcat(str, strAux);
-
-        sum += auxQueue->waitTime;
-        auxQueue = auxQueue->next;
-    }
-
-    copyToFile(fileName, str);
-
-    x = sum * 1.0 / quantProcesses;
-    sprintf(str, "\nTempo de espera médio: %.1fms", x);
-    copyToFile(fileName, str);
-
-    sum = 0;
-
-    auxQueue = queue;
-    memset(str, 0, strlen(str));
-    strcat(str, "\nTempo de turnaround de cada processo: ");
-    while(auxQueue){
-        sprintf(strAux, "P%u: %ums ", auxQueue->processValue, auxQueue->turnAround);
-        strcat(str, strAux);
-
-        sum += auxQueue->turnAround;
-        auxQueue = auxQueue->next;
-    }
-
-    copyToFile(fileName, str);
-
-    x = sum * 1.0 / quantProcesses;
-    sprintf(str, "\nTempo de turnaround médio: %.1fms", x);
-
-    copyToFile(fileName, str);
+    insertInfoToFile(currTime, queue, cpuUsageMs, fileName, quantProcesses);
 }
 
 void SJFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName){
@@ -430,6 +382,8 @@ void SJFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProce
         for(unsigned int i=0;i<ioBurstCounter;i++)
             ioBurstsSorted[i] = auxArray[i];
     }
+
+    insertInfoToFile(currTime, queue, cpuUsageMs, fileName, quantProcesses);
 }
 
 void resetStruct(processQueue **queue){
@@ -445,7 +399,12 @@ void resetStruct(processQueue **queue){
     }
 }
 
-void insertInfoToFile(unsigned int totalTurnaround, unsigned int currTime, processQueue *queue, unsigned int cpuUsageMs, ){
+void insertInfoToFile(unsigned int currTime, processQueue *queue, unsigned int cpuUsageMs, 
+                        char *fileName, unsigned int quantProcesses){
+    char str[1000], strAux[100];
+    unsigned int totalTurnaround;
+    processQueue *auxQueue;
+
     /* Aqui é calculado o uso de CPU */
     totalTurnaround = currTime - queue->submission;
     float x = (cpuUsageMs * 100) / (totalTurnaround * 1.0);
