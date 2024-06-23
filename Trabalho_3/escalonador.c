@@ -40,6 +40,7 @@ void insertInfoToFile(unsigned int currTime, processQueue *queue, unsigned int c
 
 void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName);
 void SJFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName);
+void SRTFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName);
 
 int main(int argc, char *argv[]){
     char *archName = argv[1], outFileName[strlen(argv[1])+4];
@@ -64,6 +65,8 @@ int main(int argc, char *argv[]){
     copyToFile(outFileName, "\n\n------------------------------------------SJF------------------------------------------\n\nDiagrama de Gantt: ");
     SJFAlgorithm(queue, sequential, quantProcesses, outFileName);
     resetStruct(&queue);
+    copyToFile(outFileName, "\n\n------------------------------------------SRTF------------------------------------------\n\nDiagrama de Gantt: ");
+    SRTFAlgorithm(&queue, sequential, quantProcesses, outFileName);
 
     
 
@@ -386,6 +389,10 @@ void SJFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProce
     insertInfoToFile(currTime, queue, cpuUsageMs, fileName, quantProcesses);
 }
 
+void SRTFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName){
+    
+}
+
 void resetStruct(processQueue **queue){
     processQueue *auxQueue = *queue;
 
@@ -394,7 +401,8 @@ void resetStruct(processQueue **queue){
         auxQueue->endTime = 0;
         auxQueue->ioBurstCounter = 0;
         auxQueue->turnAround = 0;
-
+        auxQueue->waitTime = 0;
+        
         auxQueue = auxQueue->next;
     }
 }
