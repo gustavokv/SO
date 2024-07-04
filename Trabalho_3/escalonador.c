@@ -1,6 +1,6 @@
 /* Aluno: Gustavo Kermaunar Volobueff rgm47006
    Disciplina de Sistemas Operacionais
-   Professor Doutor Fábricio Sérgio de Paula */
+   Prof. Dr. Fábricio Sérgio de Paula */
 
 #include <stdio.h>
 #include <string.h>
@@ -40,7 +40,6 @@ void insertInfoToFile(unsigned int currTime, processQueue *queue, unsigned int c
 
 void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName);
 void SJFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName);
-void SRTFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName);
 
 int main(int argc, char *argv[]){
     char *archName = argv[1], outFileName[strlen(argv[1])+4];
@@ -64,11 +63,7 @@ int main(int argc, char *argv[]){
     resetStruct(&queue);
     copyToFile(outFileName, "\n\n------------------------------------------SJF------------------------------------------\n\nDiagrama de Gantt: ");
     SJFAlgorithm(queue, sequential, quantProcesses, outFileName);
-    resetStruct(&queue);
-    copyToFile(outFileName, "\n\n------------------------------------------SRTF------------------------------------------\n\nDiagrama de Gantt: ");
-    SRTFAlgorithm(&queue, sequential, quantProcesses, outFileName);
-
-    
+    resetStruct(&queue);    
 
     clearPointers(&queue);
 
@@ -183,6 +178,7 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
 
     currTime = auxQueue->submission;
 
+    /* Faz a submissão dos processos */
     while(auxQueue){
         if(currTime >= auxQueue->submission){ /* Caso o tempo corrente seja maior ou igual a submissão, ele segue normalmente */
             sprintf(str, "P%u %u|", auxQueue->processValue, currTime + auxQueue->cpuBursts[auxQueue->cpuBurstCounter]);
@@ -212,6 +208,7 @@ void FCFSAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProc
         auxQueue = auxQueue->next;
     }
 
+    /* Controla os picos de CPU e E/S */
     while(finishedProcesses < quantProcesses){
         sortArray(ioBurstEnds, quantIOsArray);
 
@@ -387,10 +384,6 @@ void SJFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProce
     }
 
     insertInfoToFile(currTime, queue, cpuUsageMs, fileName, quantProcesses);
-}
-
-void SRTFAlgorithm(processQueue *queue, unsigned int seq, unsigned int quantProcesses, char *fileName){
-    
 }
 
 void resetStruct(processQueue **queue){
