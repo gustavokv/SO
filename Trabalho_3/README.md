@@ -10,13 +10,16 @@ A estrutura dos processos será informada em um arquivo texto. A linha i desse a
 
     O primeiro representa a prioridade do processo: vai de 1 (menor) a 10 (maior);
     O segundo representa o instante de submissão do processo no sistema, em milissegundos;
-    Uma sequência de tamanho ímpar, contendo o tempo, em milissegundos, do primeiro pico de CPU, primeiro pico de E/S (se houver), segundo pico de CPU (se houver), etc.;
+    Uma sequência de tamanho ímpar, contendo o tempo, em milissegundos, do primeiro pico de CPU, <br>
+    primeiro pico de E/S (se houver), segundo pico de CPU (se houver), etc.;
 
 O programa terá os seguintes argumentos de entrada, nessa ordem:
 
     Nome do arquivo texto de entrada;
     Tamanho do quantum para o algoritmo Round-Robin, em milissegundos;
-    Opção -seq. Quando essa opção for informada as E/S dos processos serão simuladas de forma sequencial, considerando que há apenas 1 dispositivo de E/S. Quando essa opção não for informada, as operações de E/S serão simuladas de forma paralela, considerando que cada processo faz E/S em um dispositivo distinto.
+    Opção -seq. Quando essa opção for informada as E/S dos processos serão simuladas de forma sequencial,<br> 
+    considerando que há apenas 1 dispositivo de E/S. Quando essa opção não for informada, as operações<br>
+    de E/S serão simuladas de forma paralela, considerando que cada processo faz E/S em um dispositivo distinto.<br>
 
 A saída será um arquivo texto, com o mesmo nome do arquivo de entrada acrescido do sufixo ".out". Nesse arquivo de saída devem ser apresentados, para cada algoritmo:
 
