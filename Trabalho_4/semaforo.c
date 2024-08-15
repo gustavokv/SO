@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 #define FILE_NAME "in.txt"
 
@@ -9,14 +10,14 @@ typedef struct Lista{
     struct Lista *next;
 } Lista;
 
-Lista *L2 = NULL, *L3 = NULL;
+Lista *L1 = NULL, *L2 = NULL, *L3 = NULL;
 
 void* l2_runner(void *param);
 void* l3_runner(void *param);
 void* l3_print_runner(void *param);
 
 int main(){
-    Lista *L1 = NULL, *auxNode, *newNode;
+    Lista *auxNode, *newNode;
 
     pthread_t tid[3];
     pthread_attr_t attr;
@@ -25,11 +26,11 @@ int main(){
     unsigned int val;
 
     pthread_attr_init(&attr);
-
+    
     /* Cria as threads */
-    pthread_create(&tid[0], &attr, l2_runner, L1);
-    pthread_create(&tid[1], &attr, l3_runner, NULL);
-    pthread_create(&tid[2], &attr, l3_print_runner, NULL);
+    pthread_create(&tid[0], &attr, l2_runner, NULL);
+    // pthread_create(&tid[1], &attr, l3_runner, NULL);
+    // pthread_create(&tid[2], &attr, l3_print_runner, NULL);
 
     fp = fopen(FILE_NAME, "r");
 
@@ -39,7 +40,7 @@ int main(){
     }
 
     /* Lê os valores do arquivo txt um por um inserindo na L1 */
-    while(fscanf(fp, "%1u", &val) != EOF){
+    while(fscanf(fp, "%u", &val) != EOF){
         newNode = malloc(sizeof(Lista));
         newNode->value = val;
         newNode->next = NULL;
@@ -48,7 +49,7 @@ int main(){
             L1 = newNode;
         else{
             auxNode = L1;
-
+            
             while(auxNode->next)
                 auxNode = auxNode->next;
 
@@ -56,29 +57,25 @@ int main(){
         }
     }
 
-    /* Como o EOF descarta o último valor lido, insiro ele aqui */
-    newNode = malloc(sizeof(Lista));
-    newNode->value = val;
-    newNode->next = NULL;
-
-    auxNode->next->next = newNode;
-
     fclose(fp);
+
+    for(int i=0;i<1;i++)
+        pthread_join(tid[i], NULL);
 
     return 0;
 }
 
 /* Lê a L1 e coloca em L2 os valores que não são maiores que 2 e pares */
 void* l2_runner(void *param){
-    Lista *L1 = (Lista*)param;
+    Lista *auxL1 = L1;
+    
+    while(auxL1 && auxL1->next)
+        auxL1 = auxL1->next;
 
-    while(L1->next)
-        L1 = L1->next;
-
-    if(!(L1->value > 2 && L1->value % 2 == 0)){
+    if(auxL1 && !(auxL1->value > 2 && auxL1->value % 2 == 0)){
         Lista *newNode = malloc(sizeof(Lista));
 
-        newNode->value = L1->value;
+        newNode->value = auxL1->value;
         newNode->next = NULL;
 
         if(!L2)
@@ -97,7 +94,7 @@ void* l2_runner(void *param){
 }
 
 /* Analisa os valores de L2 e se, o valor não for primo, insere em L3 */
-void* l2_runner(void *param){
+void* l3_runner(void *param){
     Lista *auxNode = L2;
     unsigned int result = 0;
 
@@ -113,7 +110,7 @@ void* l2_runner(void *param){
 
     if(result > 0){
         Lista *newNode = malloc(sizeof(Lista));
-
+        
         newNode->value = auxNode->value;
         newNode->next = NULL;
 
