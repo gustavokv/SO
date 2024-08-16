@@ -2,8 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <semaphore.h>
-
-#define FILE_NAME "in.txt"
+#include <fcntl.h>
 
 typedef struct Lista{
     unsigned int value;
@@ -12,11 +11,43 @@ typedef struct Lista{
 
 Lista *L1 = NULL, *L2 = NULL, *L3 = NULL;
 
+#define SEM1_NAME "LISTA_1"
+#define SEM2_NAME "LISTA_2"
+#define SEM3_NAME "LISTA_3"
+#define SEM4_NAME "TERMINATE"
+
+sem_t *sem1 = NULL;
+sem_t *sem2 = NULL;
+sem_t *sem3 = NULL;
+sem_t *sem4 = NULL;
+
 void* l2_runner(void *param);
 void* l3_runner(void *param);
 void* l3_print_runner(void *param);
 
-int main(){
+int main(int argc, char *argv[]){
+    if(argc != 2){
+        printf("Usage: ./a.out <file_name>\n");
+        return -1;
+    }
+
+    sem_unlink(SEM1_NAME);
+    sem_unlink(SEM2_NAME);
+    sem_unlink(SEM3_NAME);
+    sem_unlink(SEM4_NAME);
+
+    sem1 = sem_open(SEM1_NAME, O_CREAT | O_EXCL, 0664, 0);
+    sem2 = sem_open(SEM2_NAME, O_CREAT | O_EXCL, 0664, 1);
+    sem3 = sem_open(SEM3_NAME, O_CREAT | O_EXCL, 0664, 0);
+    sem4 = sem_open(SEM4_NAME, O_CREAT | O_EXCL, 0664, 0);
+
+    if (sem1 == SEM_FAILED || sem2 == SEM_FAILED || sem3 == SEM_FAILED || sem4 == SEM_FAILED) {
+        perror("sem_open");
+        exit(EXIT_FAILURE);
+    }
+
+    char *FILE_NAME = argv[1];
+
     Lista *auxNode, *newNode;
 
     pthread_t tid[3];
@@ -41,6 +72,10 @@ int main(){
 
     /* Lê os valores do arquivo txt um por um inserindo na L1 */
     while(fscanf(fp, "%u", &val) != EOF){
+        printf("waiting for sem lock Thread 1\n");
+        sem_wait(sem2);
+        printf("Acquired sem lock Thread 1\n");
+
         newNode = malloc(sizeof(Lista));
         newNode->value = val;
         newNode->next = NULL;
@@ -55,6 +90,9 @@ int main(){
 
             auxNode->next = newNode;
         }
+
+        printf("release sem lock Thread 1\n");
+        sem_post(sem1);
     }
 
     fclose(fp);
@@ -62,32 +100,49 @@ int main(){
     for(int i=0;i<1;i++)
         pthread_join(tid[i], NULL);
 
+    sem_close(sem4);
+    sem_unlink(SEM1_NAME);
+    sem_unlink(SEM2_NAME);
+    sem_unlink(SEM3_NAME);
+    sem_unlink(SEM4_NAME);
+
     return 0;
 }
 
 /* Lê a L1 e coloca em L2 os valores que não são maiores que 2 e pares */
 void* l2_runner(void *param){
-    Lista *auxL1 = L1;
-    
-    while(auxL1 && auxL1->next)
-        auxL1 = auxL1->next;
+    while(1){
+        printf("waiting for sem lock Thread 2\n");
+        sem_wait(sem1);
+        printf("Acquired sem lock Thread 2\n");
+        
+        Lista *auxL1 = L1;
+        
+        while(auxL1 && auxL1->next)
+            auxL1 = auxL1->next;
 
-    if(auxL1 && !(auxL1->value > 2 && auxL1->value % 2 == 0)){
-        Lista *newNode = malloc(sizeof(Lista));
+        printf("\n");
+        
+        if(auxL1 && !(auxL1->value > 2 && auxL1->value % 2 == 0)){
+            Lista *newNode = malloc(sizeof(Lista));
 
-        newNode->value = auxL1->value;
-        newNode->next = NULL;
+            newNode->value = auxL1->value;
+            newNode->next = NULL;
 
-        if(!L2)
-            L2 = newNode;
-        else{
-            Lista *auxNode = L2;
+            if(!L2)
+                L2 = newNode;
+            else{
+                Lista *auxNode = L2;
 
-            while(auxNode->next)
-                auxNode = auxNode->next;
+                while(auxNode->next)
+                    auxNode = auxNode->next;
 
-            auxNode->next = newNode;
+                auxNode->next = newNode;
+            }
         }
+
+        printf("release sem lock Thread 2\n");
+        sem_post(sem2);
     }
 
     pthread_exit(0);
