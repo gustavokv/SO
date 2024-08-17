@@ -38,7 +38,7 @@ int main(int argc, char *argv[]){
 
     sem1 = sem_open(SEM1_NAME, O_CREAT | O_EXCL, 0664, 0);
     sem2 = sem_open(SEM2_NAME, O_CREAT | O_EXCL, 0664, 1);
-    sem3 = sem_open(SEM3_NAME, O_CREAT | O_EXCL, 0664, 1);
+    sem3 = sem_open(SEM3_NAME, O_CREAT | O_EXCL, 0664, 0);
     sem4 = sem_open(SEM4_NAME, O_CREAT | O_EXCL, 0664, 0);
 
     if (sem1 == SEM_FAILED || sem2 == SEM_FAILED || sem3 == SEM_FAILED || sem4 == SEM_FAILED) {
@@ -53,8 +53,9 @@ int main(int argc, char *argv[]){
     pthread_t tid[3];
     pthread_attr_t attr;
 
-    FILE *fp;
+    FILE *fp, *fp_copy;
     unsigned int val;
+    int c;
 
     pthread_attr_init(&attr);
     
@@ -63,23 +64,29 @@ int main(int argc, char *argv[]){
     pthread_create(&tid[1], &attr, l3_runner, NULL);
     // pthread_create(&tid[2], &attr, l3_print_runner, NULL);
 
-    fp = fopen(FILE_NAME, "a");
+    fp = fopen(FILE_NAME, "a+");
 
     if(!fp){
-        perror("Error opening in.txt file!\n");
+        perror("Error opening txt file!\n");
         return -1;
     }
 
-    fwrite("-1", sizeof(char), 1, fp);
+    /* Copia o arquivo original para uma cópia para poder recuperá-lo depois */
+    fp_copy = fopen("copia.txt", "w");
+    while((c = fgetc(fp)) != EOF)
+        fputc(c, fp_copy);
+    fclose(fp_copy);
+
+    /* Insere -1 no final do arquivo para identificar o final dele */
+    fwrite("-1", sizeof(int), 1, fp);
     fclose(fp);
 
     fp = fopen(FILE_NAME, "r");
-
     /* Lê os valores do arquivo txt um por um inserindo na L1 */
     while(fscanf(fp, "%u", &val) != EOF){
-        // printf("waiting for sem lock Thread 1\n");
+        printf("waiting for sem lock Thread 1\n");
         sem_wait(sem2);
-        // printf("Acquired sem lock Thread 1\n");
+        printf("Acquired sem lock Thread 1\n");
 
         newNode = malloc(sizeof(Lista));
         newNode->value = val;
@@ -103,7 +110,7 @@ int main(int argc, char *argv[]){
             aux = aux->next;
         }
 
-        // printf("release sem lock Thread 1\n");
+        printf("release sem lock Thread 1\n");
         sem_post(sem1);
     }
 
@@ -111,6 +118,16 @@ int main(int argc, char *argv[]){
 
     for(int i=0;i<2;i++)
         pthread_join(tid[i], NULL);
+
+    /* Remove o arquivo original, reescrevendo ele com a cópia por conta do -1 inserido no final */
+    remove(FILE_NAME);
+    fp_copy = fopen("copia.txt", "r");
+    fp = fopen(FILE_NAME, "w+");
+    while((c = fgetc(fp_copy)) != EOF)
+        fputc(c, fp);
+    fclose(fp);
+    fclose(fp_copy);
+    remove("copia.txt");
 
     sem_close(sem4);
     sem_unlink(SEM1_NAME);
@@ -124,17 +141,14 @@ int main(int argc, char *argv[]){
 /* Lê a L1 e coloca em L2 os valores que não são maiores que 2 e pares */
 void* l2_runner(void *param){
     while(1){
-        // printf("waiting for sem lock Thread 2\n");
+        printf("waiting for sem lock Thread 2\n");
         sem_wait(sem1);
-        sem_wait(sem3);
-        // printf("Acquired sem lock Thread 2\n");
+        printf("Acquired sem lock Thread 2\n");
         
         Lista *auxL1 = L1;
         
         while(auxL1 && auxL1->next)
             auxL1 = auxL1->next;
-
-        printf("\n");
         
         if(auxL1 && !(auxL1->value > 2 && auxL1->value % 2 == 0)){
             Lista *newNode = malloc(sizeof(Lista));
@@ -145,16 +159,16 @@ void* l2_runner(void *param){
             if(!L2)
                 L2 = newNode;
             else{
-                Lista *auxNode = L2;
+                Lista *auxL2 = L2;
 
-                while(auxNode->next)
-                    auxNode = auxNode->next;
+                while(auxL2->next)
+                    auxL2 = auxL2->next;
 
-                auxNode->next = newNode;
+                auxL2->next = newNode;
             }
         }
 
-        // printf("release sem lock Thread 2\n");
+        printf("release sem lock Thread 2\n");
         sem_post(sem2);
     }
 
@@ -165,7 +179,7 @@ void* l2_runner(void *param){
 void* l3_runner(void *param){
     while(1){
         printf("waiting for sem lock Thread 3\n");
-        sem_wait(sem2);
+        sem_wait(sem3);
         printf("Acquired sem lock Thread 3\n");
 
         Lista *auxL2 = L2;
@@ -173,6 +187,9 @@ void* l3_runner(void *param){
 
         while(auxL2 && auxL2->next)
             auxL2 = auxL2->next;
+        
+        if(auxL2 && (auxL2->value == 0 || auxL2->value == 1))
+            result = 1;
 
         if(auxL2){
             for (int i = 2; i <= auxL2->value / 2; i++) {
@@ -181,9 +198,9 @@ void* l3_runner(void *param){
                     break;
                 }
             }
-        }
+        }        
 
-        if(result > 0){
+        if(auxL2 && result == 0){
             Lista *newNode = malloc(sizeof(Lista));
             
             newNode->value = auxL2->value;
@@ -192,17 +209,17 @@ void* l3_runner(void *param){
             if(!L3)
                 L3 = newNode;
             else{
-                Lista *auxL2 = L3;
+                Lista *auxL3 = L3;
 
-                while(auxL2->next)
-                    auxL2 = auxL2->next;
+                while(auxL3->next)
+                    auxL3 = auxL3->next;
 
-                auxL2->next = newNode;
+                auxL3->next = newNode;
             }
         }
 
         printf("release sem lock Thread 3\n");
-        sem_post(sem3);
+        sem_wait(sem3);
     }
 
     pthread_exit(0);
