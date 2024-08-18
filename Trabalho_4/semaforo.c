@@ -114,7 +114,7 @@ int main(int argc, char *argv[]){
     }
     sem_post(sem1);
 
-    // printf("1 ENCERROU\n");
+    printf("1 ENCERROU\n");
 
     fclose(fp);
 
@@ -177,13 +177,14 @@ void* l2_runner(void *param){
 
                 auxL2->next = newNode;
             }
+            
+            sem_post(sem2);
         }
         /* Libera para a l3_runner executar */
-        sem_post(sem2);
         // printf("thread3 libearda");
     }while(auxL1);
 
-    // printf("2 ENCERROU\n");
+    printf("2 ENCERROU\n");
 
     pthread_exit(0);
 }
@@ -235,13 +236,12 @@ void* l3_runner(void *param){
 
                 auxL3->next = newNode;
             }
+            sem_post(sem3);
         }
-
-        sem_post(sem3);
         // printf("thread4 liberada");
     }while(auxL2);
 
-    // printf("3 ENCERROU\n");
+    printf("3 ENCERROU\n");
 
     pthread_exit(0);
 }
@@ -262,11 +262,12 @@ void* l3_print_runner(void *param){
             firstIteration = 0;
         else
             auxL3 = auxL3->next;
+            
         if(auxL3)
-            printf("%d\n", auxL3->value);
+            printf("%d ", auxL3->value);
     }while(auxL3);
 
-    // printf("4 ENCERROU\n");
+    printf("4 ENCERROU\n");
 
     pthread_exit(0);
 }
