@@ -16,16 +16,15 @@ typedef struct Lista{
 } Lista;
 
 Lista *L1 = NULL, *L2 = NULL, *L3 = NULL;
+FILE *arq;
 
 #define SEM1_NAME "LISTA_1"
 #define SEM2_NAME "LISTA_2"
 #define SEM3_NAME "LISTA_3"
-#define SEM4_NAME "TERMINATE"
 
 sem_t *sem1 = NULL;
 sem_t *sem2 = NULL;
 sem_t *sem3 = NULL;
-sem_t *sem4 = NULL;
 
 void* l2_runner(void *param);
 void* l3_runner(void *param);
@@ -37,17 +36,17 @@ int main(int argc, char *argv[]){
         return -1;
     }
 
-    sem_unlink(SEM1_NAME);
-    sem_unlink(SEM2_NAME);
-    sem_unlink(SEM3_NAME);
-    sem_unlink(SEM4_NAME);
+    // sem_unlink(SEM1_NAME);
+    // sem_unlink(SEM2_NAME);
+    // sem_unlink(SEM3_NAME);
+
+    arq = fopen("resultado.txt", "w");
 
     sem1 = sem_open(SEM1_NAME, O_CREAT | O_EXCL, 0664, 0);
     sem2 = sem_open(SEM2_NAME, O_CREAT | O_EXCL, 0664, 0);
     sem3 = sem_open(SEM3_NAME, O_CREAT | O_EXCL, 0664, 0);
-    sem4 = sem_open(SEM4_NAME, O_CREAT | O_EXCL, 0664, 0);
 
-    if (sem1 == SEM_FAILED || sem2 == SEM_FAILED || sem3 == SEM_FAILED || sem4 == SEM_FAILED) {
+    if (sem1 == SEM_FAILED || sem2 == SEM_FAILED || sem3 == SEM_FAILED) {
         perror("sem_open");
         exit(EXIT_FAILURE);
     }
@@ -110,7 +109,6 @@ int main(int argc, char *argv[]){
 
         /* Libera para a l2_runner executar e inserir os elementos na L2 */
         sem_post(sem1);
-        // printf("thread2 libearda");
     }
     sem_post(sem1);
 
@@ -131,11 +129,11 @@ int main(int argc, char *argv[]){
     fclose(fp_copy);
     remove("copia.txt");
 
-    sem_close(sem4);
+    fclose(arq);
+
     sem_unlink(SEM1_NAME);
     sem_unlink(SEM2_NAME);
     sem_unlink(SEM3_NAME);
-    sem_unlink(SEM4_NAME);
 
     return 0;
 }
@@ -149,11 +147,8 @@ void* l2_runner(void *param){
     Lista *auxL1 = L1;
 
     do {
-        // printf("esperando liberar thread1");
-
         /* Aguarda a thread principal liberar */
         sem_wait(sem1);
-        // printf("thread1 libearda");
 
         /* Por conta de que na primeira interação não irá ter elementos ->next na lista, pula */
         if(firstIteration)
@@ -181,8 +176,9 @@ void* l2_runner(void *param){
             sem_post(sem2);
         }
         /* Libera para a l3_runner executar */
-        // printf("thread3 libearda");
     }while(auxL1);
+
+    sem_post(sem2);
 
     printf("2 ENCERROU\n");
 
@@ -197,9 +193,7 @@ void* l3_runner(void *param){
     Lista *auxL2 = L2;
 
     do{
-        // printf("esperando libearr thread3");
         sem_wait(sem2);
-        // printf("thread3 libearda");
 
         if(firstIteration)
             firstIteration = 0;
@@ -211,7 +205,7 @@ void* l3_runner(void *param){
         if(auxL2 && (auxL2->value == 0 || auxL2->value == 1))
             result = 1;
 
-        if(auxL2){
+        if(auxL2 && result == 0){
             for (int i = 2; i <= auxL2->value / 2; i++) {
                 if (auxL2->value % i == 0) {
                     result++;
@@ -238,8 +232,9 @@ void* l3_runner(void *param){
             }
             sem_post(sem3);
         }
-        // printf("thread4 liberada");
     }while(auxL2);
+
+    sem_post(sem3);
 
     printf("3 ENCERROU\n");
 
@@ -254,17 +249,17 @@ void* l3_print_runner(void *param){
     Lista *auxL3 = L3;
 
     do{
-        // printf("Esperando liberar thread 4");
         sem_wait(sem3);
-        // printf("Thread4 libearda");
 
         if(firstIteration)
             firstIteration = 0;
         else
             auxL3 = auxL3->next;
             
-        if(auxL3)
+        if(auxL3){
+            fprintf(arq, "%d ", auxL3->value);
             printf("%d ", auxL3->value);
+        }
     }while(auxL3);
 
     printf("4 ENCERROU\n");
