@@ -20,6 +20,8 @@ void* remove_even_runner();
 void* remove_prime_runner();
 void* print_runner();
 
+void destroy_list();
+
 int main(int argc, char *argv[]){
     if(argc != 2){
         printf("Usage: ./a.out <file_name>\n");
@@ -50,6 +52,7 @@ int main(int argc, char *argv[]){
         new_node = malloc(sizeof(Lista));
         new_node->next = NULL;
         new_node->value = val;
+        pthread_mutex_init(&(new_node->mutex), NULL);
 
         if(!L)
             L = new_node;
@@ -67,6 +70,8 @@ int main(int argc, char *argv[]){
 
     for(int i=0;i<3;i++)
         pthread_join(tid[i], NULL);
+
+    destroy_list();
 
     return 0;
 }
@@ -101,4 +106,17 @@ void* print_runner(){
     }while(l_aux);
 
     pthread_exit(0);
+}
+
+/* Desaloca a lista e destrói os mutex */
+void destroy_list(){
+    Lista *l_aux = L;
+
+    while(l_aux){
+        pthread_mutex_destroy(&(L->mutex));
+
+        l_aux = l_aux->next;
+        free(L);
+        L = l_aux;
+    }
 }
