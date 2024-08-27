@@ -78,31 +78,67 @@ int main(int argc, char *argv[]){
 
 /* Runner para remover os números pares maiores que 2 */
 void* remove_even_runner(){
+    Lista *l_aux = L;
+
+    do{
+        if(l_aux && !(l_aux->value > 2 && l_aux->value % 2 == 0)){
+            if(l_aux == L){
+                L = l_aux->next;
+                free(l_aux);
+            }
+            else{
+                Lista *prev = L;
+
+                while(prev->next != l_aux)
+                    prev = prev->next;
+
+                prev->next = l_aux->next;
+                free(l_aux);
+            }
+        }
+
+        l_aux = l_aux->next;
+    }while(l_aux);
 
     pthread_exit(0);
 }
 
 /* Runner para remover os não primos */
 void* remove_prime_runner(){
+    Lista *l_aux = L;
+
+    do{
+        unsigned int result = 0;
+        
+        if(l_aux && (l_aux->value == 0 || l_aux->value == 1))
+            result = 1;
+
+        if(l_aux && result == 0){
+            for (int i = 2; i <= l_aux->value / 2; i++) {
+                if (l_aux->value % i == 0) {
+                    result++;
+                    break;
+                }
+            }
+        }
+
+        if(l_aux && result == 0){
+
+        }
+
+        l_aux = l_aux->next;
+    }while(l_aux);
 
     pthread_exit(0);
 }
 
 /* Runner para imprimir a lista */
 void* print_runner(){
-    int firstIteration = 1;
-
-    while(!L);
     Lista *l_aux = L;
 
     do{
-        if(firstIteration)
-            firstIteration = 0;
-        else
-            l_aux = l_aux->next;
-
-        if(l_aux)
-            printf("%d ", l_aux->value);
+        printf("%d ", l_aux->value);
+        l_aux = l_aux->next;
     }while(l_aux);
 
     pthread_exit(0);
