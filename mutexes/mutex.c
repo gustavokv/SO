@@ -38,7 +38,7 @@ int main(int argc, char *argv[]){
 
     Lista *l_aux = NULL, *new_node = NULL;
 
-    pthread_attr_init(&attr);
+    pthread_attr_init(&attr);   
 
     /* Cria as threads */
     pthread_create(&tid[0], &attr, remove_even_runner, NULL);
@@ -92,7 +92,7 @@ void* remove_even_runner(){
         if(l_aux->passo == 1){
             pthread_mutex_lock(&(l_aux->mutex));
 
-            if(l_aux && !(l_aux->value > 2 && l_aux->value % 2 == 0)){
+            if(l_aux && !(l_aux->value > 2 && l_aux->value % 2 == 0)){  
                 if(l_aux == L){
                     L = l_aux->next;
                     pthread_mutex_destroy(&(l_aux->mutex));     
