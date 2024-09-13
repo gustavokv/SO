@@ -10,7 +10,7 @@
 
 typedef struct Lista{
     pthread_mutex_t mutex;
-    int value;
+    int value, passo;
     struct Lista *next;
 } Lista;
 
@@ -52,8 +52,11 @@ int main(int argc, char *argv[]){
         new_node = malloc(sizeof(Lista));
         new_node->next = NULL;
         new_node->value = val;
+        new_node->passo = 0;
         pthread_mutex_init(&(new_node->mutex), NULL);
 
+        pthread_mutex_lock(&(new_node->mutex));
+        
         if(!L)
             L = new_node;
         else{
@@ -64,6 +67,10 @@ int main(int argc, char *argv[]){
 
             l_aux->next = new_node;
         }
+
+        l_aux->passo++;
+
+        pthread_mutex_unlock(&(new_node->mutex));
     }
 
     fclose(fp);
@@ -81,22 +88,31 @@ void* remove_even_runner(){
     Lista *l_aux = L;
 
     do{
-        if(l_aux && !(l_aux->value > 2 && l_aux->value % 2 == 0)){
-            if(l_aux == L){
-                L = l_aux->next;
-                free(l_aux);
-            }
-            else{
-                Lista *prev = L;
+        
+        if(l_aux->passo == 1){
+            pthread_mutex_lock(&(l_aux->mutex));
 
-                while(prev->next != l_aux)
-                    prev = prev->next;
+            if(l_aux && !(l_aux->value > 2 && l_aux->value % 2 == 0)){
+                if(l_aux == L){
+                    L = l_aux->next;
+                    pthread_mutex_destroy(&(l_aux->mutex));     
+                    free(l_aux);
+                }
+                else{
+                    Lista *prev = L;
 
-                prev->next = l_aux->next;
-                free(l_aux);
+                    while(prev->next != l_aux)
+                        prev = prev->next;
+
+                    prev->next = l_aux->next;
+                    pthread_mutex_destroy(&(l_aux->mutex));
+                    free(l_aux);
+                }
             }
         }
 
+        l_aux->passo++;
+        pthread_mutex_unlock(&(l_aux)->mutex);      
         l_aux = l_aux->next;
     }while(l_aux);
 
@@ -109,24 +125,44 @@ void* remove_prime_runner(){
 
     do{
         unsigned int result = 0;
-        
-        if(l_aux && (l_aux->value == 0 || l_aux->value == 1))
-            result = 1;
 
-        if(l_aux && result == 0){
-            for (int i = 2; i <= l_aux->value / 2; i++) {
-                if (l_aux->value % i == 0) {
-                    result++;
-                    break;
+        if(l_aux->passo == 2){
+            pthread_mutex_lock(&(l_aux)->mutex);
+
+            if(l_aux && (l_aux->value == 0 || l_aux->value == 1))
+                result = 1;
+
+            if(l_aux && result == 0){
+                for (int i = 2; i <= l_aux->value / 2; i++) {
+                    if (l_aux->value % i == 0) {
+                        result++;
+                        break;
+                    }
                 }
             }
+
+            if(l_aux && result == 0){
+                if(l_aux == L){
+                    L = l_aux->next;
+                    pthread_mutex_destroy(&(l_aux->mutex));
+                    free(l_aux);
+                }
+                else{
+                    Lista *prev = L;
+
+                    while(prev->next != l_aux)
+                        prev = prev->next;
+
+                    prev->next = l_aux->next;
+                    pthread_mutex_destroy(&(l_aux->mutex));
+                    free(l_aux);
+                }
+            }
+        
+            l_aux->passo++;      
+            pthread_mutex_unlock(&(l_aux)->mutex);      
+            l_aux = l_aux->next;
         }
-
-        if(l_aux && result == 0){
-
-        }
-
-        l_aux = l_aux->next;
     }while(l_aux);
 
     pthread_exit(0);
@@ -137,8 +173,13 @@ void* print_runner(){
     Lista *l_aux = L;
 
     do{
-        printf("%d ", l_aux->value);
-        l_aux = l_aux->next;
+        if(l_aux->passo == 3){
+            pthread_mutex_lock(&(l_aux)->mutex);
+            printf("%d ", l_aux->value);
+            l_aux->passo++;
+            pthread_mutex_unlock(&(l_aux)->mutex);
+            l_aux = l_aux->next;
+        }
     }while(l_aux);
 
     pthread_exit(0);
