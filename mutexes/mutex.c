@@ -10,15 +10,12 @@
 
 typedef struct Lista{
     pthread_mutex_t mutex;
-    pthread_cond_t cond[3];
-    int value;
+    int value, passo;
     struct Lista *next;
 } Lista;
 
 Lista *L = NULL;
-int init_mutex = 0;
-pthread_cond_t global_cond;
-pthread_mutex_t global_mutex;
+int next_value=0;
 
 void* remove_even_runner();
 void* remove_prime_runner();
@@ -44,9 +41,6 @@ int main(int argc, char *argv[]){
 
     pthread_attr_init(&attr);   
 
-    pthread_mutex_init(&global_mutex, NULL);
-    pthread_cond_init(&global_cond, NULL);
-
     /* Cria as threads */
     pthread_create(&tid[0], &attr, remove_even_runner, NULL);
     pthread_create(&tid[1], &attr, remove_prime_runner, NULL);
@@ -59,10 +53,10 @@ int main(int argc, char *argv[]){
         new_node = malloc(sizeof(Lista));
         new_node->next = NULL;
         new_node->value = val;
-
+        new_node->passo = 0;
         pthread_mutex_init(&(new_node->mutex), NULL);
-        for(int i=0; i<3; i++)
-            pthread_cond_init(&(new_node)->cond[i], NULL);
+        
+        printf("main leu %d\n", new_node->value);
 
         pthread_mutex_lock(&(new_node)->mutex);
         
@@ -77,11 +71,13 @@ int main(int argc, char *argv[]){
             l_aux->next = new_node;
         }
 
-        pthread_cond_signal(&(new_node)->cond[0]);
-        pthread_mutex_unlock(&(new_node)->mutex);
+        printf("thread 1 - %d\n", new_node->value);
 
-        while(!(&global_cond))
-            pthread_cond_wait(&global_cond, &global_mutex);
+        pthread_mutex_unlock(&(new_node)->mutex);
+        new_node->passo++;
+
+        while(!next_value);
+        next_value = 0;
     }
 
     fclose(fp);
@@ -96,16 +92,18 @@ int main(int argc, char *argv[]){
 
 /* Runner para remover os números pares maiores que 2 */
 void* remove_even_runner(){
-    while(!L);
+    while(!L || L->passo != 1);
     Lista *l_aux = L;
 
+    printf("thread 1 passou\n");
+
     do{
+        while(l_aux->passo != 1);
+
         pthread_mutex_lock(&(l_aux)->mutex);
 
-        while(!l_aux && !(&(l_aux)->cond[0]))
-            pthread_cond_wait(&(l_aux)->cond[0], &(l_aux)->mutex);
-
-        if(l_aux && !(l_aux->value > 2 && l_aux->value % 2 == 0)){  
+        if(l_aux && (l_aux->value > 2 && l_aux->value % 2 == 0)){ 
+            printf("thread 2 - %d\n", l_aux->value); 
             if(l_aux == L){
                 L = l_aux->next;
                 pthread_mutex_destroy(&(l_aux->mutex));     
@@ -123,9 +121,10 @@ void* remove_even_runner(){
             }
         }
         
-        pthread_cond_signal(&(l_aux)->cond[1]);
-        pthread_mutex_unlock(&(l_aux)->mutex);
+        pthread_mutex_unlock(&(l_aux)->mutex); 
+        l_aux->passo++;
 
+        while(!l_aux || !l_aux->next);
         l_aux = l_aux->next;
     }while(l_aux);
 
@@ -134,16 +133,18 @@ void* remove_even_runner(){
 
 /* Runner para remover os não primos */
 void* remove_prime_runner(){
-    while(!L);
+    while(!L || L->passo != 2);
     Lista *l_aux = L;
 
+    printf("thread 2 passou\n");
+
     do{
+        while(l_aux->passo != 2);
         pthread_mutex_lock(&(l_aux)->mutex);
 
-        while(!l_aux && !(&(l_aux)->cond[1]))
-            pthread_cond_wait(&(l_aux)->cond[1], &(l_aux)->mutex);
-
         unsigned int result = 0;
+
+        printf("thread 3 - %d\n", l_aux->value); 
 
         if(l_aux && (l_aux->value == 0 || l_aux->value == 1))
             result = 1;
@@ -175,9 +176,10 @@ void* remove_prime_runner(){
             }
         }
 
-        pthread_cond_signal(&(l_aux)->cond[2]);
         pthread_mutex_unlock(&(l_aux)->mutex);
-        
+        l_aux->passo++;
+
+        while(!l_aux || !l_aux->next);
         l_aux = l_aux->next;
         
     }while(l_aux);
@@ -187,20 +189,21 @@ void* remove_prime_runner(){
 
 /* Runner para imprimir a lista */
 void* print_runner(){
-    while(!L);
+    while(!L || L->passo != 3);
     Lista *l_aux = L;
 
-    do{
-        pthread_mutex_lock(&(l_aux)->mutex);
+    printf("thread 3 passou\n");
 
-        while(!l_aux && !(&(l_aux)->cond[2]))
-            pthread_cond_wait(&(l_aux)->cond[2], &(l_aux)->mutex);
+    do{
+        while(l_aux->passo != 3);
+        pthread_mutex_lock(&(l_aux)->mutex);
 
         printf("%d ", l_aux->value);
 
         pthread_mutex_unlock(&(l_aux)->mutex);
-        pthread_cond_signal(&global_cond);  
+        next_value = 1;
 
+        while(!l_aux || !l_aux->next);
         l_aux = l_aux->next;
     }while(l_aux);
 
