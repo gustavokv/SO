@@ -68,7 +68,7 @@ int main(int argc, char *argv[]){
 
         if(l_aux->next){
             printf("other\n");
-            pthread_mutex_unlock(&(l_aux->mutex));
+            pthread_mutex_unlock(&(l_aux->mutex));       
             pthread_mutex_lock(&(l_aux->next->mutex));
         }
         else{
