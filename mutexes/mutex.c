@@ -68,15 +68,15 @@ int main(int argc, char *argv[]){
 
         if(l_aux->next){
             printf("other\n");
-            pthread_mutex_unlock(&(l_aux)->mutex);
-            pthread_mutex_lock(&(l_aux)->next->mutex);
+            pthread_mutex_unlock(&(l_aux->mutex));
+            pthread_mutex_lock(&(l_aux->next->mutex));
         }
         else{
             printf("first\n");
-            pthread_mutex_lock(&(l_aux)->mutex);
+            pthread_mutex_lock(&(l_aux->mutex));     
         }
 
-        Lista *aux = l_aux;
+        Lista *aux = L;
 
         while(aux){
             printf("%d ", aux->value);
@@ -98,10 +98,11 @@ int main(int argc, char *argv[]){
 /* Runner para remover os números pares maiores que 2 */
 void* remove_even_runner(){
     while(!l_aux);
-    Lista *remove = NULL;
+        Lista *remove = NULL;
 
     do{        
-        pthread_mutex_lock(&(l_aux)->mutex);
+        pthread_mutex_lock(&(l_aux->mutex));
+        printf("aqui o %d\n", l_aux->value);                
         
         if(l_aux->value > 2 && l_aux->value % 2 == 0){
             printf("vai remove\n"); 
@@ -124,7 +125,7 @@ void* remove_even_runner(){
             free(remove);
             printf("removeu\n");
         } else{
-            pthread_mutex_unlock(&(l_aux)->mutex);
+            pthread_mutex_unlock(&(l_aux->mutex));
             l_aux = l_aux->next;
         }
     }while(1);
