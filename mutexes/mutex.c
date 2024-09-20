@@ -66,16 +66,7 @@ int main(int argc, char *argv[]){
             l_aux->next = new_node;
         }
 
-        if(l_aux->next){
-            printf("other\n");
-            pthread_mutex_unlock(&(l_aux->mutex));       
-            pthread_mutex_lock(&(l_aux->next->mutex));
-        }
-        else{
-            printf("first\n");
-            pthread_mutex_lock(&(l_aux->mutex));  
-        }
-
+        
         Lista *aux = L;
 
         while(aux){
