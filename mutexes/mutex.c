@@ -42,8 +42,8 @@
 
         /* Cria as threads */
         pthread_create(&tid[0], &attr, remove_even_runner, NULL);
-        // pthread_create(&tid[1], &attr, remove_prime_runner, NULL);
-        // pthread_create(&tid[2], &attr, print_runner, NULL);
+        pthread_create(&tid[1], &attr, remove_prime_runner, NULL);
+        pthread_create(&tid[2], &attr, print_runner, NULL);
 
         fp = fopen(FILE_NAME, "r");
 
@@ -54,42 +54,28 @@
             new_node->value = val;
             new_node->passo = 0;
             pthread_mutex_init(&new_node->mutex, NULL); 
-
-            printf("MAIN\n");
             
             if(!l_aux){
+                pthread_mutex_lock(&new_node->mutex);
                 l_aux = new_node;
                 L = l_aux;
             }
             else{
-                printf("next\n");
                 l_aux->next = new_node;             
             }
-            
-            if(!l_aux->next)
-                pthread_mutex_lock(&l_aux->mutex);
-            else{
-                printf("unlock %d\n", l_aux->passo);
-
+                            
+            if(l_aux->next){
                 if(l_aux->passo == 0){
-                    printf("lock main %d\n", pthread_mutex_lock(&l_aux->next->mutex));
+                    pthread_mutex_lock(&l_aux->next->mutex);
                     pthread_mutex_unlock(&l_aux->mutex);
                     l_aux->passo++;
                 }
             }
-        
-            Lista *aux = L;
-
-            while(aux){
-                printf("%d ", aux->value);
-                aux = aux->next;
-            }
-            printf("\n\n\n");
         }
 
         fclose(fp);
 
-        for(int i=0;i<1;i++)
+        for(int i=0;i<3;i++)
             pthread_join(tid[i], NULL);
 
         destroy_list();
@@ -103,12 +89,9 @@
         Lista *remove = NULL;
 
         do{        
-            
             if(l_aux->value > 2 && l_aux->value % 2 == 0){
-                printf("oi\n");
-                printf("lock thread %d\n", pthread_mutex_lock(&l_aux->mutex));
+                pthread_mutex_lock(&l_aux->mutex);
 
-                printf("vai remove\n"); 
                 Lista *prev = L;        
                 remove = l_aux;
 
@@ -124,8 +107,6 @@
                 pthread_mutex_unlock(&l_aux->mutex);
                 pthread_mutex_destroy(&(remove->mutex));    
                 free(remove);
-
-                printf("removeu\n");
             } else{
                 l_aux = l_aux->next;
             }
@@ -136,10 +117,10 @@
 
     /* Runner para remover os não primos */
     void* remove_prime_runner(){
+        while(!l_aux);
         Lista *l_aux = L, *remove = NULL;
 
         do{
-
             unsigned int result = 0;
 
             if(l_aux->value == 0 || l_aux->value == 1)
@@ -155,6 +136,8 @@
             }
 
             if(result != 0){
+                pthread_mutex_lock(&l_aux->mutex);
+
                 if(l_aux == L){
                     remove = l_aux;
                     L = l_aux->next;
@@ -172,26 +155,29 @@
                     pthread_mutex_destroy(&(l_aux->mutex));
                     free(l_aux);
                 }
+
+                pthread_mutex_unlock(&l_aux->mutex);
             }
-
-
-            l_aux = l_aux->next;
-        }while(l_aux);
+            else
+                l_aux = l_aux->next;
+        }while(1);
 
         pthread_exit(0);
     }
 
     /* Runner para imprimir a lista */
     void* print_runner(){
+        while(!l_aux);
         Lista *l_aux = L;
 
         do{
-
+            pthread_mutex_lock(&l_aux->mutex);
             printf("%d ", l_aux->value);
-
+            pthread_mutex_lock(&l_aux->mutex);
+            while(!l_aux->next);
 
             l_aux = l_aux->next;
-        }while(l_aux);
+        }while(1);
 
         pthread_exit(0);
     }
