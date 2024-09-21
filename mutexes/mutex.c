@@ -65,7 +65,6 @@
                 printf("next\n");
                 l_aux->next = new_node;
             }
-
             
             Lista *aux = L;
 
