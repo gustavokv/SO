@@ -53,7 +53,7 @@
             new_node->next = NULL;
             new_node->value = val;
             new_node->passo = 0;
-            pthread_mutex_init(&(new_node->mutex), NULL);
+            pthread_mutex_init(&new_node->mutex, NULL); 
 
             printf("MAIN\n");
             
@@ -63,13 +63,21 @@
             }
             else{
                 printf("next\n");
-                l_aux->next = new_node;
+                l_aux->next = new_node;             
             }
             
-            if(l_aux->next)
-                pthread_mutex_unlock(&l_aux->mutex);
-            
+            if(!l_aux->next)
+                pthread_mutex_lock(&l_aux->mutex);
+            else{
+                printf("unlock %d\n", l_aux->passo);
 
+                if(l_aux->passo == 0){
+                    printf("lock main %d\n", pthread_mutex_lock(&l_aux->next->mutex));
+                    pthread_mutex_unlock(&l_aux->mutex);
+                    l_aux->passo++;
+                }
+            }
+        
             Lista *aux = L;
 
             while(aux){
@@ -98,7 +106,7 @@
             
             if(l_aux->value > 2 && l_aux->value % 2 == 0){
                 printf("oi\n");
-                pthread_mutex_lock(&l_aux->mutex);
+                printf("lock thread %d\n", pthread_mutex_lock(&l_aux->mutex));
 
                 printf("vai remove\n"); 
                 Lista *prev = L;        
