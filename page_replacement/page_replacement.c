@@ -3,6 +3,11 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
+void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp);
+void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp);
+void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp);
+int search_array(unsigned int *arr, unsigned int x, unsigned int arr_size); 
+
 int main(int argc, char *argv[]){
 
     if(argc != 4){
@@ -38,6 +43,38 @@ int main(int argc, char *argv[]){
 
     fclose(fp);
 
+    fp = fopen("erros.out", "w");
+
+    fwrite("FIFO: ", 1, sizeof("FIFO: "), fp);
+    FIFO(access_addr, quant_elem, &fp);
+    
+    fwrite("\n\nOPT: ", 1, sizeof("\n\nOPT: "), fp);
+    OPT(access_addr, quant_elem, &fp);  
+
+    fwrite("\n\nLRU: ", 1, sizeof("\n\nLRU: "), fp);
+    LRU(access_addr, quant_elem, &fp);
+
+    fclose(fp);
 
     return 0;
+}
+
+int search_array(unsigned int *arr, unsigned int x, unsigned int arr_size){
+    for(int i=0;i<arr_size;i++)
+        if(arr[i] == x)
+            return i;
+
+    return -1;
+}
+
+void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp){
+    
+}
+
+void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp){
+
+}
+
+void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp){
+
 }
