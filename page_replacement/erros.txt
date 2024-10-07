@@ -1,10 +1,20 @@
 FIFO:     ENDERECO     PAGINA
               0           0
-              2           1
-              1           2
-              6           3
-              4           4
-              0           5
-              3           8
-              1           9
-              2           10
+              2           2
+              1           4
+              6           6
+              4           8
+              0           10
+              3           16
+              1           18
+              2           20
+
+OPT:     ENDERECO     PAGINA
+              0           0
+              2           2
+              1           4
+              6           6
+              4           8
+              3           16
+
+LRU:     ENDERECO     PAGINA
