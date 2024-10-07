@@ -3,10 +3,10 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
-void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, unsigned int *pages, unsigned int pages_size);
-void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, unsigned int *pages, unsigned int pages_size);
-void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, unsigned int *pages, unsigned int pages_size);
-int search_array(unsigned int *arr, unsigned int x, unsigned int arr_size); 
+void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *pages, unsigned int pages_size);
+void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *pages, unsigned int pages_size);
+void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *pages, unsigned int pages_size);
+int search_array(int *arr, unsigned int x, unsigned int arr_size); 
 
 int main(int argc, char *argv[]){
 
@@ -35,7 +35,11 @@ int main(int argc, char *argv[]){
     arch_size = st.st_size;
     unsigned int access_addr[arch_size], quant_elem=0, value;
     unsigned int pages_size = (int)(mem_size/page_size*1.0);
-    unsigned int pages[pages_size];
+    int pages[pages_size];
+
+    //Inicialização do array com -1 pois pode ocorrer comparações com valores aleatórios.
+    for(int i=0;i<pages_size;i++)
+        pages[i] = -1;
 
     fscanf(fp, "%d", &value);
     while(!feof(fp)){
@@ -45,15 +49,21 @@ int main(int argc, char *argv[]){
 
     fclose(fp);
 
-    fp = fopen("erros.txt", "w");   
+    fp = fopen("erros.txt", "r");
 
-    fwrite("FIFO:", 1, sizeof("FIFO:"), fp);
+    if(fp)
+        remove("erros.txt");
+
+    fclose(fp);
+    fp = fopen("erros.txt", "a+");  
+
+    fprintf(fp, "%s", "FIFO:     ENDERECO     PAGINA");
     FIFO(access_addr, quant_elem, fp, pages, pages_size);
     
-    fwrite("\n\nOPT:", 1, sizeof("\n\nOPT:"), fp);
+    fprintf(fp, "\n\n%s", "OPT:     ENDERECO     PAGINA");
     OPT(access_addr, quant_elem, fp, pages, pages_size);  
 
-    fwrite("\n\nLRU:", 1, sizeof("\n\nLRU:"), fp);
+    fprintf(fp, "\n\n%s", "LRU:     ENDERECO     PAGINA");
     LRU(access_addr, quant_elem, fp, pages, pages_size);
 
     fclose(fp);
@@ -61,25 +71,22 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-int search_array(unsigned int *arr, unsigned int x, unsigned int arr_size){
-    for(int i=0;i<arr_size;i++)
+int search_array(int *arr, unsigned int x, unsigned int arr_size){
+    for(int i=0;i<arr_size;i++){
         if(arr[i] == x)
             return i;
+    }
 
     return -1;
 }
 
-void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, unsigned int *pages, unsigned int pages_size){
+void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *pages, unsigned int pages_size){
     unsigned int quant_errors=0, page_pos=0;
-    char to_write[7], first[5], sec[5];
 
     for(int i=0;i<quant_elem;i++){
         if(search_array(pages, access_addr[i], pages_size) < 0 ){
-            // sprintf(first, "%u", access_addr[i]);
-            // sprintf(sec, "%u", i);
-            // fprintf(fp, "%s - %s, ", first, sec);
-            fwrite(to_write, 1, sizeof(to_write), fp);
-            quant_errors++;
+            fprintf(fp, "\n              %u           %u", access_addr[i], i);
+            quant_errors++; 
 
             if(page_pos > pages_size-1)
                 page_pos = 0;
@@ -88,13 +95,22 @@ void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, unsigned
         }
     }
 
-    printf("FIFO:\n     Quantidade de erros: %u\n     Percentual de erros: %.2f%%\n", quant_errors, ((100*quant_errors)/(quant_elem*1.0)));
+    printf("FIFO:     QUANTIDADE DE ERROS     PERCENTUAL DE ERROS\n\
+                   %u                   %.2f%%\n", quant_errors, ((100*quant_errors)/(quant_elem*1.0)));
 }
 
-void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, unsigned int *pages, unsigned int pages_size){
+void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *pages, unsigned int pages_size){
+    unsigned int quant_errors=0;
 
+
+    printf("OPT:     QUANTIDADE DE ERROS     PERCENTUAL DE ERROS\n\
+                   %u                   %.2f%%\n", quant_errors, ((100*quant_errors)/(quant_elem*1.0)));
 }
 
-void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, unsigned int *pages, unsigned int pages_size){
+void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *pages, unsigned int pages_size){
+    unsigned int quant_errors=0;
 
+
+    printf("LRU:     QUANTIDADE DE ERROS     PERCENTUAL DE ERROS\n\
+                   %u                   %.2f%%\n", quant_errors, ((100*quant_errors)/(quant_elem*1.0)));        
 }
