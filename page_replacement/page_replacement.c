@@ -47,13 +47,13 @@ int main(int argc, char *argv[]){
 
     fp = fopen("erros.txt", "w");   
 
-    fwrite("FIFO: ", 1, sizeof("FIFO: "), fp);
+    fwrite("FIFO:", 1, sizeof("FIFO:"), fp);
     FIFO(access_addr, quant_elem, fp, pages, pages_size);
     
-    fwrite("\n\nOPT: ", 1, sizeof("\n\nOPT: "), fp);
+    fwrite("\n\nOPT:", 1, sizeof("\n\nOPT:"), fp);
     OPT(access_addr, quant_elem, fp, pages, pages_size);  
 
-    fwrite("\n\nLRU: ", 1, sizeof("\n\nLRU: "), fp);
+    fwrite("\n\nLRU:", 1, sizeof("\n\nLRU:"), fp);
     LRU(access_addr, quant_elem, fp, pages, pages_size);
 
     fclose(fp);
@@ -71,11 +71,13 @@ int search_array(unsigned int *arr, unsigned int x, unsigned int arr_size){
 
 void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, unsigned int *pages, unsigned int pages_size){
     unsigned int quant_errors=0, page_pos=0;
-    char to_write[7];
+    char to_write[7], first[5], sec[5];
 
     for(int i=0;i<quant_elem;i++){
         if(search_array(pages, access_addr[i], pages_size) < 0 ){
-            sprintf(to_write, "%u - %u, ", access_addr[i], page_pos);
+            // sprintf(first, "%u", access_addr[i]);
+            // sprintf(sec, "%u", i);
+            // fprintf(fp, "%s - %s, ", first, sec);
             fwrite(to_write, 1, sizeof(to_write), fp);
             quant_errors++;
 
