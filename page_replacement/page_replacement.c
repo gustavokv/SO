@@ -5,7 +5,7 @@
 
 void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size);
 void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size);
-// void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *pages, unsigned int pages_size);
+void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int pages_size);
 int search_array(int *arr, unsigned int x, unsigned int arr_size, unsigned int init); 
 void clearPages(int *pages, unsigned int pages_size);
 int search_OPT(unsigned int *arr, unsigned int x, unsigned int quant_elem, unsigned int init, unsigned int page_size);
@@ -67,10 +67,10 @@ int main(int argc, char *argv[]){
     fprintf(fp, "\n\n%s", "OPT:     ENDERECO     PAGINA");
     OPT(access_addr, quant_elem, fp, page_table, quant_frames, page_size); 
 
-    // clearPages(pages, pages_size); 
+    clearPages(page_table, quant_frames); 
 
-    // fprintf(fp, "\n\n%s", "LRU:     ENDERECO     PAGINA");
-    // LRU(access_addr, quant_elem, fp, pages, pages_size, page_size);
+    fprintf(fp, "\n\n%s", "LRU:     ENDERECO     PAGINA");
+    LRU(access_addr, quant_elem, fp, page_table, quant_frames, page_size);
 
     fclose(fp);
 
@@ -90,10 +90,16 @@ int search_array(int *arr, unsigned int x, unsigned int arr_size, unsigned int i
     return -1;
 }
 
+//Faz a contagem de elementos que se repetem dentro da tabela de páginas nos endereços acessados para o OPT
 int search_OPT(unsigned int *arr, unsigned int x, unsigned int quant_elem, unsigned int init, unsigned int page_size){
-    for(int i=init+1;i<quant_elem;i++)
+    unsigned int count=0;
+
+    for(int i=init;i<quant_elem;i++)
         if((int)(arr[i]/page_size) == x)
-            return i;
+            count++;
+
+    if(count>0)
+        return count;
 
     return -1;
 }
@@ -119,20 +125,20 @@ void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *pag
 
 void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size){
     unsigned int quant_errors=0, page_pos=0, is_full=0;
-    int maior = -1, search_res;
+    int menor, search_res;
 
     for(int i=0;i<quant_elem;i++){
         if(search_array(page_table, (int)(access_addr[i]/page_size), quant_frames, 0) < 0){
             fprintf(fp, "\n              %u           %u", access_addr[i], (int)(access_addr[i] / page_size));
 
+            menor = quant_elem;
+
             if(is_full<quant_frames)
                 page_table[is_full++] = (int)(access_addr[i]/page_size);
             else{
-                
                 for(int j=0;j<quant_frames;j++){
-                    printf("%d\n", page_table[j]);
-                    if((search_res = search_OPT(access_addr, page_table[j], quant_elem, i, page_size)) > maior){
-                        maior = search_res;
+                    if((search_res = search_OPT(access_addr, page_table[j], quant_elem, i, page_size)) < menor){
+                        menor = search_res;
                         page_pos = j;
                     }
 
@@ -142,12 +148,9 @@ void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page
                     }
                 }                           
 
-                printf("\n");
-
                 page_table[page_pos] = (int)(access_addr[i]/page_size);
             }
 
-            maior = -1;
             quant_errors++;
         }
     }
@@ -156,7 +159,7 @@ void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page
                    %u                   %.2f%%\n", quant_errors, ((100*quant_errors)/(quant_elem*1.0)));
 }
 
-void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *pages, unsigned int pages_size, unsigned int each_page_byte){
+void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int pages_size){
     unsigned int quant_errors=0;
 
 
