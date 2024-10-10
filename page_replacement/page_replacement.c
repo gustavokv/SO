@@ -3,13 +3,12 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
-#define MAX_ARRAY_SIZE 65536
-
 void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size);
 void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size);
 // void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *pages, unsigned int pages_size);
 int search_array(int *arr, unsigned int x, unsigned int arr_size, unsigned int init); 
 void clearPages(int *pages, unsigned int pages_size);
+int search_OPT(unsigned int *arr, unsigned int x, unsigned int quant_elem, unsigned int init, unsigned int page_size);
 
 int main(int argc, char *argv[]){
 
@@ -24,6 +23,8 @@ int main(int argc, char *argv[]){
     strcpy(arch_name, argv[3]);
     
     FILE *fp;
+    struct stat st;
+    int size;
 
     fp = fopen(arch_name, "r");
 
@@ -31,8 +32,11 @@ int main(int argc, char *argv[]){
         printf("Archive %s not found.\n", arch_name);
         return -1;
     }
+
+    stat(arch_name, &st);
+    size = st.st_size;
     
-    int access_addr[MAX_ARRAY_SIZE], quant_elem=0, value, quant_frames = mem_size / page_size;
+    int access_addr[size*sizeof(int)], quant_elem=0, value, quant_frames = mem_size / page_size;
     int page_table[quant_frames];
 
     //Inicialização do array com -1 pois pode ocorrer comparações com valores aleatórios.
@@ -79,10 +83,17 @@ void clearPages(int *pages, unsigned int pages_size){
 }
 
 int search_array(int *arr, unsigned int x, unsigned int arr_size, unsigned int init){
-    for(int i=init;i<arr_size;i++){
+    for(int i=init;i<arr_size;i++)
         if(arr[i] == x)
             return i;
-    }
+
+    return -1;
+}
+
+int search_OPT(unsigned int *arr, unsigned int x, unsigned int quant_elem, unsigned int init, unsigned int page_size){
+    for(int i=init+1;i<quant_elem;i++)
+        if((int)(arr[i]/page_size) == x)
+            return i;
 
     return -1;
 }
@@ -107,10 +118,38 @@ void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *pag
 }
 
 void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size){
-    unsigned int quant_errors=0, page_pos=0;
+    unsigned int quant_errors=0, page_pos=0, is_full=0;
+    int maior = -1, search_res;
 
     for(int i=0;i<quant_elem;i++){
-        
+        if(search_array(page_table, (int)(access_addr[i]/page_size), quant_frames, 0) < 0){
+            fprintf(fp, "\n              %u           %u", access_addr[i], (int)(access_addr[i] / page_size));
+
+            if(is_full<quant_frames)
+                page_table[is_full++] = (int)(access_addr[i]/page_size);
+            else{
+                
+                for(int j=0;j<quant_frames;j++){
+                    printf("%d\n", page_table[j]);
+                    if((search_res = search_OPT(access_addr, page_table[j], quant_elem, i, page_size)) > maior){
+                        maior = search_res;
+                        page_pos = j;
+                    }
+
+                    if(search_res == -1){
+                        page_pos = j;
+                        break;              
+                    }
+                }                           
+
+                printf("\n");
+
+                page_table[page_pos] = (int)(access_addr[i]/page_size);
+            }
+
+            maior = -1;
+            quant_errors++;
+        }
     }
 
     printf("OPT:     QUANTIDADE DE ERROS     PERCENTUAL DE ERROS\n\

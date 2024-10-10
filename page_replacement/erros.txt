@@ -14,3 +14,14 @@ FIFO:     ENDERECO     PAGINA
               73           7
               5           0
               16           1
+
+OPT:     ENDERECO     PAGINA
+              76           7
+              1           0
+              19           1
+              29           2
+              38           3
+              43           4
+              8           0
+              17           1
+              73           7
