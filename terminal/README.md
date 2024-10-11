@@ -1,10 +1,11 @@
 Faça um programa em C que implemente um interpretador de comandos com as seguintes funcionalidades:
 
-    Executar programas com seus respectivos argumentos digitados na linha de comando. Quando a linha de comando terminar 
-    com o caracter '&' o interpretador de comandos será liberado para novos comandos sem aguardar o término da execução do 
-    programa solicitado. Quando não for digitado '&' o interpretador de comandos aguardará o término da execução do programa 
-    solicitado para depois liberar a linha de comando. A criação de execução de processos deve ocorrer usando as chamadas às 
-    funções fork() e execve();  
+    Executar programas com seus respectivos argumentos digitados na linha de comando. 
+    Quando a linha de comando terminar com o caracter '&' o interpretador de comandos 
+    será liberado para novos comandos sem aguardar o término da execução do programa solicitado. 
+    Quando não for digitado '&' o interpretador de comandos aguardará o término da execução do 
+    programa solicitado para depois liberar a linha de comando. A criação de execução de 
+    processos deve ocorrer usando as chamadas às funções fork() e execve();  
     
     Quando digitado o comando "tree PID", imprimir a subárvore de nomes de processos em execução no sistema tendo como raiz
     dessa subárvore o processo com identificação PID. A árvore deve ser construída usando as informações contidas no diretório 
