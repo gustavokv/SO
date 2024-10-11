@@ -5,7 +5,7 @@
 
 void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size);
 void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size);
-void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int pages_size);
+void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size);
 int search_array(int *arr, unsigned int x, unsigned int arr_size, unsigned int init); 
 void clearPages(int *pages, unsigned int pages_size);
 int search_OPT(unsigned int *arr, unsigned int x, unsigned int quant_elem, unsigned int init, unsigned int page_size);
@@ -159,9 +159,38 @@ void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page
                    %u                   %.2f%%\n", quant_errors, ((100*quant_errors)/(quant_elem*1.0)));
 }
 
-void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int pages_size){
-    unsigned int quant_errors=0;
+void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size){
+    unsigned int quant_errors=0, contador[quant_frames], n_frames=0, maior_tempo, page_pos;
 
+    //Vamos utilizar um contador para o LRU
+    for(int i=0;i<quant_frames;i++)
+        contador[i] = 0;
+
+    for(int i=0;i<quant_elem;i++){
+        if(search_array(page_table, (int)(access_addr[i]/page_size), quant_frames, 0) < 0){
+            fprintf(fp, "\n              %u           %u", access_addr[i], (int)(access_addr[i] / page_size));
+
+            maior_tempo=0;
+
+            if(n_frames<quant_frames)
+                page_table[n_frames++] = (int)(access_addr[i]/page_size);
+            else{
+                for(int j=0;j<quant_frames;j++)
+                    if(contador[j] > maior_tempo){
+                        maior_tempo = contador[j];
+                        page_pos = j;
+                    }
+            
+                contador[page_pos] = 0;
+                page_table[page_pos] = (int)(access_addr[i]/page_size);
+            }
+
+            quant_errors++;
+        }
+
+        for(int j=0;j<n_frames;j++)
+            contador[j]++;
+    }
 
     printf("LRU:     QUANTIDADE DE ERROS     PERCENTUAL DE ERROS\n\
                    %u                   %.2f%%\n", quant_errors, ((100*quant_errors)/(quant_elem*1.0)));        
