@@ -12,6 +12,7 @@
 void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size);
 void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size);
 void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size);
+
 int search_array(int *arr, unsigned int x, unsigned int arr_size, unsigned int init); 
 void clearPages(int *pages, unsigned int pages_size);
 int search_OPT(unsigned int *arr, unsigned int x, unsigned int quant_elem, unsigned int init, unsigned int page_size);
@@ -95,7 +96,7 @@ int search_array(int *arr, unsigned int x, unsigned int arr_size, unsigned int i
     return -1;
 }
 
-//Faz a contagem de elementos que se repetem dentro da tabela de páginas nos endereços acessados para o OPT
+/* Faz a contagem de elementos que se repetem dentro da tabela de páginas nos endereços acessados para o OPT */
 int search_OPT(unsigned int *arr, unsigned int x, unsigned int quant_elem, unsigned int init, unsigned int page_size){
     unsigned int count=0;
 
@@ -144,11 +145,11 @@ void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page
             else{
                 for(int j=0;j<quant_frames;j++){ /* Para todos os valores da tabela de páginas, conta o com menor frequência dentro do array de accesos */
                     if((search_res = search_OPT(access_addr, page_table[j], quant_elem, i, page_size)) < menor){
-                        menor = search_res;
+                        menor = search_res; 
                         page_pos = j;
                     }
 
-                    /* Caso em que o valor não aparece mais no array de acessos */
+                    /* Caso em que o valor não aparece depois no array de acessos */
                     if(search_res == -1){
                         page_pos = j;
                         break;              
