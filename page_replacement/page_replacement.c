@@ -25,6 +25,12 @@ int main(int argc, char *argv[]){
 
     unsigned int page_size = atoi(argv[1]);
     unsigned int mem_size = atoi(argv[2]);
+
+    if(mem_size < page_size){
+        printf("Memory has to be greater than page size.\n");
+        return -1;
+    }
+
     char file_name[sizeof(argv[3]) * sizeof(int)];
     strcpy(file_name, argv[3]);
     
