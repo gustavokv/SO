@@ -16,6 +16,7 @@ void LRU(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page
 int search_array(int *arr, unsigned int x, unsigned int arr_size, unsigned int init); 
 void clearPages(int *pages, unsigned int pages_size);
 int search_OPT(unsigned int *arr, unsigned int x, unsigned int quant_elem, unsigned int init, unsigned int page_size);
+int search_furthest(int *arr, unsigned int x, unsigned int arr_size, unsigned int init, unsigned int page_size);
 
 int main(int argc, char *argv[]){
     if(argc != 4){
@@ -116,6 +117,14 @@ int search_OPT(unsigned int *arr, unsigned int x, unsigned int quant_elem, unsig
     return -1;
 }
 
+int search_furthest(int *arr, unsigned int x, unsigned int arr_size, unsigned int init, unsigned int page_size){
+    for(int i=init;i<arr_size;i++)
+        if((int)(arr[i]/page_size) == x)
+            return i;
+
+    return -1;
+}
+
 void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size){
     unsigned int quant_errors=0, page_pos=0;
 
@@ -137,30 +146,47 @@ void FIFO(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *pag
 }
 
 void OPT(unsigned int *access_addr, unsigned int quant_elem, FILE *fp, int *page_table, unsigned int quant_frames, unsigned int page_size){
-    unsigned int quant_errors=0, page_pos=0, is_full=0;
-    int menor, search_res;
+    unsigned int quant_errors=0, page_pos=0, is_full=0, see_same[quant_frames], same_count;
+    int menor, search_res, maior;
 
     for(int i=0;i<quant_elem;i++){
         if(search_array(page_table, (int)(access_addr[i]/page_size), quant_frames, 0) < 0){
             fprintf(fp, "\n              %u           %u", access_addr[i], (int)(access_addr[i] / page_size));
 
             menor = quant_elem;
+            maior = 0;
+            same_count = 0;
 
             if(is_full<quant_frames) /* Preenche a tabela de páginas */
                 page_table[is_full++] = (int)(access_addr[i]/page_size);
             else{
                 for(int j=0;j<quant_frames;j++){ /* Para todos os valores da tabela de páginas, conta o com menor frequência dentro do array de accesos */
                     if((search_res = search_OPT(access_addr, page_table[j], quant_elem, i, page_size)) < menor){
+                        same_count=0;
+
+                        see_same[same_count++] = page_table[j];
                         menor = search_res; 
                         page_pos = j;
                     }
-
+                    else if(search_res == menor)
+                        see_same[same_count++] = page_table[j];
+                    
                     /* Caso em que o valor não aparece depois no array de acessos */
                     if(search_res == -1){
                         page_pos = j;
                         break;              
                     }
-                }                           
+                }
+
+                /* Caso haja uma quantidade igual de aparições, ele verifica qual a mais "distante" */
+                if(same_count>1){
+                    for(int j=0;j<same_count;j++){
+                        if((search_res = search_furthest(access_addr, see_same[j], quant_elem, i, page_size)) > maior){
+                            maior = search_res;
+                            page_pos = search_array(page_table, see_same[j], quant_frames, 0);
+                        }    
+                    }
+                }                   
 
                 page_table[page_pos] = (int)(access_addr[i]/page_size);
             }
